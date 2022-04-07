@@ -1,0 +1,43 @@
+name: tag
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  tag:
+    runs-on: [self-hosted, Linux, small]
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Bump GitHub tag
+      id: bump
+      uses: anothrNick/github-tag-action@1
+      env:
+        GITHUB_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
+        WITH_V: "true"
+        DEFAULT_BUMP: patch
+
+    - name: Get major and minor values for new tag
+      id: tags
+      env:
+        TAG: ${{ steps.bump.outputs.tag }}
+      run: |
+        export MAJOR_MINOR=${TAG%.*}
+        export MAJOR=${MAJOR_MINOR%.*}
+        echo "::set-output name=major_minor::${MAJOR_MINOR}"
+        echo "::set-output name=major::${MAJOR}"
+
+    - name: Github update major.minor tag
+      uses: anothrNick/github-tag-action@1
+      env:
+        GITHUB_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
+        CUSTOM_TAG: ${{ steps.tags.outputs.major_minor }}
+    
+    - name: Github update major tag
+      uses: anothrNick/github-tag-action@1
+      env:
+        GITHUB_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
+        CUSTOM_TAG: ${{ steps.tags.outputs.major }}
