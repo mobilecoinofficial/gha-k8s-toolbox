@@ -1,3 +1,4 @@
+# Copyright (c) 2022 MobileCoin Inc.
 name: build-and-publish
 
 on:
@@ -42,7 +43,7 @@ jobs:
       with:
         context: .
         # Don't push on pull_request, just build and check for errors
-        push: ${{ github.event_name == 'pull_request' && false || true }}
+        push: ${{ github.event_name == 'pull_request' && 'false' || 'true' }}
         tags: ${{ steps.meta.outputs.tags }}
         cache-from: type=registry,ref=${{ env.DOCKER_REPO }}:buildcache-${{ github.ref_name }}
         cache-to: type=registry,ref=${{ env.DOCKER_REPO }}:buildcache-${{ github.ref_name }}

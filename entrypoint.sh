@@ -1,4 +1,5 @@
 #!/bin/bash
+# Copyright (c) 2022 MobileCoin Inc.
 
 set -o errexit
 set -o pipefail

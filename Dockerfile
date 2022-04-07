@@ -1,3 +1,4 @@
+# Copyright (c) 2022 MobileCoin Inc.
 FROM alpine/helm:3.8.0
 
 ENV HELM_CONFIG_HOME=/opt/helm

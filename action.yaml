@@ -1,4 +1,6 @@
-name: 'helm'
+# Copyright (c) 2022 MobileCoin Inc.
+
+name: 'k8s-toolbox'
 description: 'Run helm commands'
 inputs:
   action:
