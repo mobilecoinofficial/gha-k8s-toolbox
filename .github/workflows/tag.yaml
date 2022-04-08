@@ -16,14 +16,17 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
 
+    # We need to use an external PAT here because GHA will not run downstream events if we use the built in token.
     - name: Bump GitHub tag
       id: bump
       uses: anothrNick/github-tag-action@1.36.0
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
         WITH_V: "true"
         DEFAULT_BUMP: patch
 
+    # Use built in token here because we don't need downstream events for these tags.
+    # Doing manual tag because anothrNick/github-tag-action won't retag a commit.
     - name: Get major and minor values for new tag
       id: tags
       env:
