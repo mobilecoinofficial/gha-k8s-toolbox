@@ -15,7 +15,7 @@ jobs:
 
     - name: Bump GitHub tag
       id: bump
-      uses: anothrNick/github-tag-action@1
+      uses: anothrNick/github-tag-action@1.36.0
       env:
         GITHUB_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
         WITH_V: "true"
@@ -32,13 +32,13 @@ jobs:
         echo "::set-output name=major::${MAJOR}"
 
     - name: Github update major.minor tag
-      uses: anothrNick/github-tag-action@1
+      uses: anothrNick/github-tag-action@1.36.0
       env:
         GITHUB_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
         CUSTOM_TAG: ${{ steps.tags.outputs.major_minor }}
     
     - name: Github update major tag
-      uses: anothrNick/github-tag-action@1
+      uses: anothrNick/github-tag-action@1.36.0
       env:
         GITHUB_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
         CUSTOM_TAG: ${{ steps.tags.outputs.major }}
