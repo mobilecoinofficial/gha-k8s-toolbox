@@ -6,6 +6,9 @@ on:
     branches:
       - main
 
+permissions:
+  contents: write
+
 jobs:
   tag:
     runs-on: [self-hosted, Linux, small]
@@ -17,7 +20,7 @@ jobs:
       id: bump
       uses: anothrNick/github-tag-action@1.36.0
       env:
-        GITHUB_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         WITH_V: "true"
         DEFAULT_BUMP: patch
 
@@ -28,17 +31,6 @@ jobs:
       run: |
         export MAJOR_MINOR=${TAG%.*}
         export MAJOR=${MAJOR_MINOR%.*}
-        echo "::set-output name=major_minor::${MAJOR_MINOR}"
-        echo "::set-output name=major::${MAJOR}"
-
-    - name: Github update major.minor tag
-      uses: anothrNick/github-tag-action@1.36.0
-      env:
-        GITHUB_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
-        CUSTOM_TAG: ${{ steps.tags.outputs.major_minor }}
-    
-    - name: Github update major tag
-      uses: anothrNick/github-tag-action@1.36.0
-      env:
-        GITHUB_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
-        CUSTOM_TAG: ${{ steps.tags.outputs.major }}
+        git tag "${MAJOR_MINOR}"
+        git tag "${MAJOR}"
+        git push --tags
