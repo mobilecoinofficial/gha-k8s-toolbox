@@ -96,167 +96,11 @@ helm_upgrade_with_values()
     error_exit "Helm Deployment Failed"
 }
 
-
 if [ -n "${INPUT_ACTION}" ]
 then
     case "${INPUT_ACTION}" in
-        s3-publish)
-            is_set INPUT_CHART_APP_VERSION
-            is_set INPUT_CHART_PATH
-            is_set INPUT_CHART_VERSION
-            is_set INPUT_AWS_ACCESS_KEY_ID
-            is_set INPUT_AWS_DEFAULT_REGION
-            is_set INPUT_AWS_SECRET_ACCESS_KEY
-            is_set INPUT_CHART_REPO
-
-            # Convert input to AWS env vars.
-            export AWS_ACCESS_KEY_ID="${INPUT_AWS_ACCESS_KEY_ID}"
-            export AWS_DEFAULT_REGION="${INPUT_AWS_DEFAULT_REGION}"
-            export AWS_SECRET_ACCESS_KEY="${INPUT_AWS_SECRET_ACCESS_KEY}"
-
-            if [ "${INPUT_CHART_SIGN}" == "true" ]
-            then
-                is_set INPUT_CHART_PGP_KEYRING_PATH
-                is_set INPUT_CHART_PGP_KEY_NAME
-            fi
-
-            echo "-- Create chart tmp dir - .tmp/charts"
-            mkdir -p ".tmp/charts"
-
-            echo "-- Updating chart dependencies"
-            helm dependency update "${INPUT_CHART_PATH}"
-
-            if [ "${INPUT_CHART_SIGN}" == "true" ]
-            then
-                echo "-- Package and sign chart with provided pgp key"
-                helm package "${INPUT_CHART_PATH}" \
-                    -d ".tmp/charts" \
-                    --app-version="${CHART_APP_VERSION}" \
-                    --version="${INPUT_CHART_VERSION}" \
-                    --sign \
-                    --keyring="${INPUT_CHART_PGP_KEYRING_PATH}" \
-                    --key="${INPUT_CHART_PGP_KEY}"
-            else 
-                echo "-- Package unsigned chart"
-                helm package "${INPUT_CHART_PATH}" \
-                    -d ".tmp/charts" \
-                    --app-version="${INPUT_CHART_APP_VERSION}" \
-                    --version="${INPUT_CHART_VERSION}"
-            fi
-
-            echo "-- Add chart repo ${INPUT_CHART_REPO}"
-            helm repo add repo "${INPUT_CHART_REPO}"
-
-            echo "-- Push chart"
-            chart_name=$(basename "${INPUT_CHART_PATH}")
-            helm s3 push --relative --force ".tmp/charts/${chart_name}-${INPUT_CHART_VERSION}.tgz" repo
-            ;;
-
-        namespace-delete)
-            rancher_get_kubeconfig
-            is_set INPUT_NAMESPACE
-
-            echo "-- Deleting ${INPUT_NAMESPACE} namespace from ${INPUT_RANCHER_CLUSTER}"
-            k delete ns "${INPUT_NAMESPACE}" --now --wait --request-timeout=5m --ignore-not-found
-            ;;
-
-        namespace-create)
-            # Create a namespace in the default project so we get all the default configs and secrets
-            rancher_get_kubeconfig
-            is_set INPUT_NAMESPACE
-            is_set INPUT_RANCHER_PROJECT
-
-            echo "-- Create namespace ${INPUT_NAMESPACE}"
-            # Don't sweat it if the namespace already exists.
-            k create ns "${INPUT_NAMESPACE}" || echo "Namespace already exists"
-
-            auth_header="Authorization: Bearer ${INPUT_RANCHER_TOKEN}"
-
-            # Add namespace to Default project
-            # Get cluster data and resource links
-            echo "-- Query Rancher for cluster info"
-            cluster=$(curl --retry 5 -sSLf -H "${auth_header}" "${INPUT_RANCHER_URL}/v3/clusters/?name=${INPUT_RANCHER_CLUSTER}") 
-
-            namespaces_url=$(echo "${cluster}" | jq -r .data[0].links.namespaces)
-            projects_url=$(echo "${cluster}" | jq -r .data[0].links.projects)
-
-            # Get Default project id
-            echo "-- Query Rancher for Default project id"
-            default_project=$(curl --retry 5 -sSLf -H "${auth_header}" "${projects_url}?name=Default")
-            default_project_id=$(echo "${default_project}" | jq -r .data[0].id)
-
-            # Add namespace to Default project
-            echo "-- Add ${INPUT_NAMESPACE} to Default project ${default_project_id}"
-            curl --retry 5 -sSLf -H "${auth_header}" \
-                -H 'Accept: application/json' \
-                -H 'Content-Type: application/json' \
-                -X POST "${namespaces_url}/${INPUT_NAMESPACE}?action=move" \
-                -d "{\"projectId\":\"${default_project_id}\"}"
-            ;;
-
-        delete-release)
-            # Delete a helm release
-            rancher_get_kubeconfig
-            is_set INPUT_NAMESPACE
-            is_set INPUT_RELEASE_NAME
-
-            k get ns "${INPUT_NAMESPACE}" || echo_exit "Namespace doesn't exist"
-
-            echo "-- Get release list"
-            release=$(helm list -a -q -n "${INPUT_NAMESPACE}" | grep "${INPUT_RELEASE_NAME}" || true)
-            if [ -n "${release}" ]
-            then
-                echo "-- Deleting release ${INPUT_RELEASE_NAME}"
-                helm delete "${INPUT_RELEASE_NAME}" -n "${INPUT_NAMESPACE}" --wait --timeout="${INPUT_CHART_WAIT_TIMEOUT}"
-
-                # Wait for delete since it seems like the helm chart sometimes doesn't really wait.
-                echo "-- No for reals, wait for resources to delete"
-                sleep 5
-                k -n "${INPUT_NAMESPACE}" wait all --for=delete --timeout="${INPUT_CHART_WAIT_TIMEOUT}" -l "app.kubernetes.io/managed-by=Helm,app.kubernetes.io/instance=${INPUT_RELEASE_NAME}"
-
-            else
-                echo "-- Release ${INPUT_RELEASE_NAME} not found."
-            fi
-
-            ;;
-
-        delete-pvcs)
-            rancher_get_kubeconfig
-            is_set INPUT_NAMESPACE
-
-            pvcs=$(k get pvc -n "${INPUT_NAMESPACE}" -o=jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}')
-            for p in $pvcs
-            do
-                echo "-- Delete PVC ${p}"
-                k delete pvc "${p}" -n "${INPUT_NAMESPACE}" --now --wait --request-timeout=5m --ignore-not-found
-            done
-            ;;
-
-        helm-deploy)
-            rancher_get_kubeconfig
-            is_set INPUT_NAMESPACE
-            is_set INPUT_RELEASE_NAME
-            is_set INPUT_CHART_VERSION
-            is_set INPUT_CHART_NAME
-            is_set INPUT_CHART_WAIT_TIMEOUT
-
-            echo "-- Add chart repo ${INPUT_CHART_REPO}"
-            repo_name=$(dd bs=10 count=1 if=/dev/urandom 2>/dev/null | base64 | tr -d +/=)
-            echo "-- Repo random name ${repo_name}"
-            helm repo add "${repo_name}" "${INPUT_CHART_REPO}"
-            helm repo update
-
-            sets=$(echo -n "${INPUT_CHART_SET}" | tr '\n' ' ')
-
-            if [ -n "${INPUT_CHART_VALUES}" ]
-            then
-                helm_upgrade_with_values "${repo_name}" "${sets}"
-            else
-                helm_upgrade "${repo_name}" "${sets}"
-            fi
-            ;;
-
         fog-ingest-activate)
+            # Activate target blue/green fog-ingest. Retire flipside ingest if it exists.
             rancher_get_kubeconfig
             is_set INPUT_NAMESPACE
             is_set INPUT_INGEST_COLOR
@@ -326,19 +170,150 @@ then
             k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -- /bin/bash -c "${command}"
             ;;
 
-        sample-keys-create-secrets)
+        helm-deploy)
+            # Deploy a helm chart
             rancher_get_kubeconfig
             is_set INPUT_NAMESPACE
-            is_set INPUT_INITIAL_KEYS_SEED
-            is_set INPUT_FOG_KEYS_SEED
-            is_set INPUT_FOG_REPORT_SIGNING_CA_CERT
+            is_set INPUT_RELEASE_NAME
+            is_set INPUT_CHART_VERSION
+            is_set INPUT_CHART_NAME
+            is_set INPUT_CHART_WAIT_TIMEOUT
 
-            k delete secret sample-keys-seeds -n "${INPUT_NAMESPACE}" --now --wait --request-timeout=5m --ignore-not-found
+            echo "-- Add chart repo ${INPUT_CHART_REPO}"
+            repo_name=$(dd bs=10 count=1 if=/dev/urandom 2>/dev/null | base64 | tr -d +/=)
+            echo "-- Repo random name ${repo_name}"
+            helm repo add "${repo_name}" "${INPUT_CHART_REPO}"
+            helm repo update
 
-            k create secret generic sample-keys-seeds -n "${INPUT_NAMESPACE}" \
-                --from-literal=FOG_KEYS_SEED="${INPUT_FOG_KEYS_SEED}" \
-                --from-literal=INITIAL_KEYS_SEED="${INPUT_INITIAL_KEYS_SEED}" \
-                --from-literal=FOG_REPORT_SIGNING_CA_CERT="${INPUT_FOG_REPORT_SIGNING_CA_CERT}"
+            sets=$(echo -n "${INPUT_CHART_SET}" | tr '\n' ' ')
+
+            if [ -n "${INPUT_CHART_VALUES}" ]
+            then
+                helm_upgrade_with_values "${repo_name}" "${sets}"
+            else
+                helm_upgrade "${repo_name}" "${sets}"
+            fi
+            ;;
+
+        helm-release-delete)
+            # Delete a helm release
+            rancher_get_kubeconfig
+            is_set INPUT_NAMESPACE
+            is_set INPUT_RELEASE_NAME
+
+            k get ns "${INPUT_NAMESPACE}" || echo_exit "Namespace doesn't exist"
+
+            echo "-- Get release list"
+            release=$(helm list -a -q -n "${INPUT_NAMESPACE}" | grep "${INPUT_RELEASE_NAME}" || true)
+            if [ -n "${release}" ]
+            then
+                echo "-- Deleting release ${INPUT_RELEASE_NAME}"
+                helm delete "${INPUT_RELEASE_NAME}" -n "${INPUT_NAMESPACE}" --wait --timeout="${INPUT_CHART_WAIT_TIMEOUT}"
+
+                # Wait for delete since it seems like the helm chart sometimes doesn't really wait.
+                echo "-- No for reals, wait for resources to delete"
+                sleep 5
+                k -n "${INPUT_NAMESPACE}" wait all --for=delete --timeout="${INPUT_CHART_WAIT_TIMEOUT}" -l "app.kubernetes.io/managed-by=Helm,app.kubernetes.io/instance=${INPUT_RELEASE_NAME}"
+
+            else
+                echo "-- Release ${INPUT_RELEASE_NAME} not found."
+            fi
+            ;;
+
+        helm-s3-publish)
+            # Publish a helm chart to an S3 bucket
+            is_set INPUT_CHART_APP_VERSION
+            is_set INPUT_CHART_PATH
+            is_set INPUT_CHART_VERSION
+            is_set INPUT_AWS_ACCESS_KEY_ID
+            is_set INPUT_AWS_DEFAULT_REGION
+            is_set INPUT_AWS_SECRET_ACCESS_KEY
+            is_set INPUT_CHART_REPO
+
+            # Convert input to AWS env vars.
+            export AWS_ACCESS_KEY_ID="${INPUT_AWS_ACCESS_KEY_ID}"
+            export AWS_DEFAULT_REGION="${INPUT_AWS_DEFAULT_REGION}"
+            export AWS_SECRET_ACCESS_KEY="${INPUT_AWS_SECRET_ACCESS_KEY}"
+
+            if [ "${INPUT_CHART_SIGN}" == "true" ]
+            then
+                is_set INPUT_CHART_PGP_KEYRING_PATH
+                is_set INPUT_CHART_PGP_KEY_NAME
+            fi
+
+            echo "-- Create chart tmp dir - .tmp/charts"
+            mkdir -p ".tmp/charts"
+
+            echo "-- Updating chart dependencies"
+            helm dependency update "${INPUT_CHART_PATH}"
+
+            if [ "${INPUT_CHART_SIGN}" == "true" ]
+            then
+                echo "-- Package and sign chart with provided pgp key"
+                helm package "${INPUT_CHART_PATH}" \
+                    -d ".tmp/charts" \
+                    --app-version="${CHART_APP_VERSION}" \
+                    --version="${INPUT_CHART_VERSION}" \
+                    --sign \
+                    --keyring="${INPUT_CHART_PGP_KEYRING_PATH}" \
+                    --key="${INPUT_CHART_PGP_KEY}"
+            else 
+                echo "-- Package unsigned chart"
+                helm package "${INPUT_CHART_PATH}" \
+                    -d ".tmp/charts" \
+                    --app-version="${INPUT_CHART_APP_VERSION}" \
+                    --version="${INPUT_CHART_VERSION}"
+            fi
+
+            echo "-- Add chart repo ${INPUT_CHART_REPO}"
+            helm repo add repo "${INPUT_CHART_REPO}"
+
+            echo "-- Push chart"
+            chart_name=$(basename "${INPUT_CHART_PATH}")
+            helm s3 push --relative --force ".tmp/charts/${chart_name}-${INPUT_CHART_VERSION}.tgz" repo
+            ;;
+
+        namespace-delete)
+            # Delete namespace in target cluster.
+            rancher_get_kubeconfig
+            is_set INPUT_NAMESPACE
+
+            echo "-- Deleting ${INPUT_NAMESPACE} namespace from ${INPUT_RANCHER_CLUSTER}"
+            k delete ns "${INPUT_NAMESPACE}" --now --wait --request-timeout=5m --ignore-not-found
+            ;;
+
+        namespace-create)
+            # Create a namespace in the default project so we get all the default configs and secrets
+            rancher_get_kubeconfig
+            is_set INPUT_NAMESPACE
+            is_set INPUT_RANCHER_PROJECT
+
+            echo "-- Create namespace ${INPUT_NAMESPACE}"
+            # Don't sweat it if the namespace already exists.
+            k create ns "${INPUT_NAMESPACE}" || echo "Namespace already exists"
+
+            auth_header="Authorization: Bearer ${INPUT_RANCHER_TOKEN}"
+
+            # Add namespace to Default project
+            # Get cluster data and resource links
+            echo "-- Query Rancher for cluster info"
+            cluster=$(curl --retry 5 -sSLf -H "${auth_header}" "${INPUT_RANCHER_URL}/v3/clusters/?name=${INPUT_RANCHER_CLUSTER}") 
+
+            namespaces_url=$(echo "${cluster}" | jq -r .data[0].links.namespaces)
+            projects_url=$(echo "${cluster}" | jq -r .data[0].links.projects)
+
+            # Get Default project id
+            echo "-- Query Rancher for Default project id"
+            default_project=$(curl --retry 5 -sSLf -H "${auth_header}" "${projects_url}?name=Default")
+            default_project_id=$(echo "${default_project}" | jq -r .data[0].id)
+
+            # Add namespace to Default project
+            echo "-- Add ${INPUT_NAMESPACE} to Default project ${default_project_id}"
+            curl --retry 5 -sSLf -H "${auth_header}" \
+                -H 'Accept: application/json' \
+                -H 'Content-Type: application/json' \
+                -X POST "${namespaces_url}/${INPUT_NAMESPACE}?action=move" \
+                -d "{\"projectId\":\"${default_project_id}\"}"
             ;;
 
         pod-restart)
@@ -357,24 +332,37 @@ then
             k scale -n "${INPUT_NAMESPACE}" "${INPUT_OBJECT_NAME}" --replicas="${replicas}" --timeout=5m
             ;;
 
-        toolbox-exec)
+        pvcs-delete)
+            # Delete PersistentVolumeClaims in target namespace.
             rancher_get_kubeconfig
             is_set INPUT_NAMESPACE
-            is_set INPUT_COMMAND
-            is_set INPUT_INGEST_COLOR
 
-            echo "-- Get toolbox pod"
-            instance="fog-ingest-${INPUT_INGEST_COLOR}"
-            toolbox=$(k get pods -n "${INPUT_NAMESPACE}" -l "app.kubernetes.io/instance=${instance},app=toolbox" -o=name | sed -r 's/pod\///')
+            pvcs=$(k get pvc -n "${INPUT_NAMESPACE}" -o=jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}')
+            for p in $pvcs
+            do
+                echo "-- Delete PVC ${p}"
+                k delete pvc "${p}" -n "${INPUT_NAMESPACE}" --now --wait --request-timeout=5m --ignore-not-found
+            done
+            ;;
 
-            echo "-- Toolbox: ${toolbox}"
-            echo "-- execute command:"
-            echo "   ${INPUT_COMMAND}"
-            echo ""
-            k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -- /bin/bash -c "${INPUT_COMMAND}"
+        sample-keys-create-secrets)
+            # Create a secret in the dev env to store the certs and seeds used to regenerate wallet keys and initial ledger.
+            rancher_get_kubeconfig
+            is_set INPUT_NAMESPACE
+            is_set INPUT_INITIAL_KEYS_SEED
+            is_set INPUT_FOG_KEYS_SEED
+            is_set INPUT_FOG_REPORT_SIGNING_CA_CERT
+
+            k delete secret sample-keys-seeds -n "${INPUT_NAMESPACE}" --now --wait --request-timeout=5m --ignore-not-found
+
+            k create secret generic sample-keys-seeds -n "${INPUT_NAMESPACE}" \
+                --from-literal=FOG_KEYS_SEED="${INPUT_FOG_KEYS_SEED}" \
+                --from-literal=INITIAL_KEYS_SEED="${INPUT_INITIAL_KEYS_SEED}" \
+                --from-literal=FOG_REPORT_SIGNING_CA_CERT="${INPUT_FOG_REPORT_SIGNING_CA_CERT}"
             ;;
 
         toolbox-copy)
+            # Copy files to blue/green fog-ingest toolbox container.
             rancher_get_kubeconfig
             is_set INPUT_NAMESPACE
             is_set INPUT_INGEST_COLOR
@@ -391,6 +379,25 @@ then
             echo ""
             k cp -n "${INPUT_NAMESPACE}" "${INPUT_SRC}" "${toolbox}:${INPUT_DST}" -c toolbox
             ;;
+
+        toolbox-exec)
+            # Execute commands on blue/green fog-ingest toolbox container.
+            rancher_get_kubeconfig
+            is_set INPUT_NAMESPACE
+            is_set INPUT_COMMAND
+            is_set INPUT_INGEST_COLOR
+
+            echo "-- Get toolbox pod"
+            instance="fog-ingest-${INPUT_INGEST_COLOR}"
+            toolbox=$(k get pods -n "${INPUT_NAMESPACE}" -l "app.kubernetes.io/instance=${instance},app=toolbox" -o=name | sed -r 's/pod\///')
+
+            echo "-- Toolbox: ${toolbox}"
+            echo "-- execute command:"
+            echo "   ${INPUT_COMMAND}"
+            echo ""
+            k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -- /bin/bash -c "${INPUT_COMMAND}"
+            ;;
+
         *)
             error_exit "Command ${INPUT_ACTION} not recognized"
             ;;

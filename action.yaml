@@ -1,50 +1,68 @@
 # Copyright (c) 2022 MobileCoin Inc.
 
 name: 'k8s-toolbox'
-description: 'Run helm commands'
+description: 'K8s tools for MobileCoin infrastructure.'
 inputs:
   action:
-    description: "builtin action to run: (s3-publish, rancher-delete-namespace, rancher-)"
+    description: "builtin action to run (See README.md)"
     required: true
   aws_access_key_id:
-    description: "aws credential for s3 repo"
-    required: false
-  aws_secret_access_key:
     description: "aws credential for s3 repo"
     required: false
   aws_default_region:
     description: "aws region for s3 repo"
     required: false
+  aws_secret_access_key:
+    description: "aws credential for s3 repo"
+    required: false
   chart_app_version:
     description: "chart appVersion for publish"
+    required: false
+  chart_name:
+    description: "name of chart in repo"
     required: false
   chart_path:
     description: "Path to chart files for publish"
     required: false
-  chart_version:
-    description: "chart version"
-    required: false
   chart_repo:
     description: "url for chart repo"
+    required: false
+  chart_set: 
+    description: "new line list of --set commands"
     required: false
   chart_values:
     description: "values file path for chart release"
     required: false
-  chart_name:
-    description: "name of chart in repo"
+  chart_version:
+    description: "chart version"
     required: false
   chart_wait_timeout:
     description: "timeout to wait for resources to be healthy"
     required: false
     default: "10m"
-  chart_set: 
-    description: "new line list of --set commands"
+  command:
+    description: "shell commands to run"
     required: false
-  release_name:
-    description: "helm release name"
+  dst:
+    description: "File destination to copy into toolbox"
+    required: false
+  fog_keys_seed:
+    description: "seed to recreate fog keys with sample-keys"
+    required: false
+  fog_report_signing_ca_cert:
+    description: "CA certificate for fog-report signing certs"
+    required: false
+  ingest_color:
+    description: "Ingest blue or green"
+    required: false
+  initial_keys_seed:
+    description: "seed to recreate initial keys with sample-keys"
     required: false
   namespace:
     description: "kubernetes namespace"
+    required: false
+  object_name:
+    description: "k8s object to scale"
     required: false
   rancher_project:
     description: "rancher project"
@@ -59,29 +77,11 @@ inputs:
   rancher_cluster:
     description: "Rancher K8s Cluster"
     required: false
-  ingest_color:
-    description: "Ingest blue or green"
+  release_name:
+    description: "helm release name"
     required: false
   src:
     description: "File to copy into toolbox"
-    required: false
-  dst:
-    description: "File destination to copy into toolbox"
-    required: false
-  initial_keys_seed:
-    description: "seed to recreate initial keys with sample-keys"
-    required: false
-  fog_keys_seed:
-    description: "seed to recreate fog keys with sample-keys"
-    required: false
-  fog_report_signing_ca_cert:
-    description: "CA certificate for fog-report signing certs"
-    required: false
-  command:
-    description: "shell commands to run"
-    required: false
-  object_name:
-    description: "k8s object to scale"
     required: false
 runs:
   using: 'docker'

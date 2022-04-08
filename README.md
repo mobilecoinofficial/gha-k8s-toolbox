@@ -4,48 +4,18 @@ A Github Action for MobileCoin general kubernetes needs.
 This is a bit of a dumping ground for scripts and automation around interacting with our Kubernetes clusters via Rancher, creating environments and deploying charts and manifests.
 
 
-## Functions
+## Functions (`with.action:`)
 
-### s3-publish
+### fog-ingest-activate
 
-Publish a helm chart to an s3 bucket.
-
-⚠️ Note: Run these jobs with a concurrency of one. Running simultaneous uploads to an s3 bucket may cause chart index corruption.
+Find toolbox pod and activate defined blue/green fog-ingest and retire the "flipside" fog-ingest (if exists).
 
 ```yaml
-    - name: Package and publish chart
+    - name: Activate primary ingest
       uses: mobilecoinofficial/gha-k8s-toolbox@v1.0
       with:
-        action: s3-publish
-        aws_access_key_id: ${{ secrets.CHARTS_AWS_ACCESS_KEY_ID }}
-        aws_secret_access_key: ${{ secrets.CHARTS_AWS_SECRET_ACCESS_KEY }}
-        aws_default_region: us-east-2
-        chart_repo: s3://charts.mobilecoin.com
-        chart_app_version: 0.0.0-dev
-        chart_version: 0.0.0-dev
-        chart_path: ./chart
-```
-
-| with | type | description |
-| --- | --- | --- |
-| `aws_access_key_id` | `string` | AWS Access Key ID for s3 bucket write |
-| `aws_default_region` | `string` | AWS Region for s3 bucket |
-| `aws_secret_access_key` | `string` | AWS Secret Access Key for s3 bucket write |
-| `chart_repo` | `string` | `s3://` Url |
-| `chart_app_version` | `string` | Chart App Version value |
-| `chart_path` | `string` | relative path to chart templates |
-| `chart_version` | `string` | Chart version value |
-
-
-### namespace-delete
-
-Delete a namespace in the target Rancher/K8s cluster.
-
-```yaml
-    - name: Delete Namespace
-      uses: mobilecoinofficial/gha-k8s-toolbox@v1.0
-      with:
-        action: namespace-delete
+        action: fog-ingest-activate
+        ingest_color: blue
         namespace: my-namespace
         rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.RANCHER_URL }}
@@ -54,76 +24,7 @@ Delete a namespace in the target Rancher/K8s cluster.
 
 | with | type | description |
 | --- | --- | --- |
-| `` | `` |  |
-| `namespace` | `string` | Namespace in target cluster |
-| `rancher_cluster` | `string` | Target cluster name |
-| `rancher_url` | `string` | Rancher Server URL |
-| `rancher_token` | `string` | Rancher API Token |
-
-
-### namespace-create
-
-Create a namespace and add it to the Default project in the target Rancher/K8s cluster.
-
-```yaml
-    - name: Create Namespace
-      uses: mobilecoinofficial/gha-k8s-toolbox@v1.0
-      with:
-        action: namespace-create
-        namespace: my-namespace
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
-        rancher_url: ${{ secrets.RANCHER_URL }}
-        rancher_token: ${{ secrets.RANCHER_TOKEN }}
-```
-
-| with | type | description |
-| --- | --- | --- |
-| `namespace` | `string` | Namespace in target cluster |
-| `rancher_cluster` | `string` | Target cluster name |
-| `rancher_url` | `string` | Rancher Server URL |
-| `rancher_token` | `string` | Rancher API Token |
-
-### delete-release
-
-Delete a helm release in the target namespace/cluster.
-
-```yaml
-    - name: Delete release
-      uses: mobilecoinofficial/gha-k8s-toolbox@v1.0
-      with:
-        action: delete-release
-        namespace: my-namespace
-        release_name: consensus-node-1
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
-        rancher_url: ${{ secrets.RANCHER_URL }}
-        rancher_token: ${{ secrets.RANCHER_TOKEN }}
-```
-
-| with | type | description |
-| --- | --- | --- |
-| `namespace` | `string` | Namespace in target cluster |
-| `release_name` | `string` | Helm release name |
-| `rancher_cluster` | `string` | Target cluster name |
-| `rancher_url` | `string` | Rancher Server URL |
-| `rancher_token` | `string` | Rancher API Token |
-
-### delete-pvcs
-
-Delete PersistentVolumeClaims in target namespace/cluster.
-
-```yaml
-    - name: Delete PersistentVolumeClaims
-      uses: mobilecoinofficial/gha-k8s-toolbox@v1.0
-      with:
-        action: delete-pvcs
-        namespace: my-namespace
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
-        rancher_url: ${{ secrets.RANCHER_URL }}
-        rancher_token: ${{ secrets.RANCHER_TOKEN }}
-```
-
-| with | type | description |
-| --- | --- | --- |
+| `ingest_color` | `string` | blue or green |
 | `namespace` | `string` | Namespace in target cluster |
 | `rancher_cluster` | `string` | Target cluster name |
 | `rancher_url` | `string` | Rancher Server URL |
@@ -165,16 +66,69 @@ Deploy helm chart in target namespace/cluster
 | `rancher_url` | `string` | Rancher Server URL |
 | `rancher_token` | `string` | Rancher API Token |
 
-### fog-ingest-activate
+### helm-release-delete
 
-Find toolbox pod and activate defined blue/green fog-ingest and retire the "flipside" fog-ingest (if exists).
+Delete a helm release in the target namespace/cluster.
 
 ```yaml
-    - name: Activate primary ingest
+    - name: Delete release
       uses: mobilecoinofficial/gha-k8s-toolbox@v1.0
       with:
-        action: fog-ingest-activate
-        ingest_color: blue
+        action: helm-release-delete
+        namespace: my-namespace
+        release_name: consensus-node-1
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.RANCHER_URL }}
+        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+```
+
+| with | type | description |
+| --- | --- | --- |
+| `namespace` | `string` | Namespace in target cluster |
+| `release_name` | `string` | Helm release name |
+| `rancher_cluster` | `string` | Target cluster name |
+| `rancher_url` | `string` | Rancher Server URL |
+| `rancher_token` | `string` | Rancher API Token |
+
+### helm-s3-publish
+
+Publish a helm chart to an s3 bucket.
+
+⚠️ Note: Run these jobs with a concurrency of one. Running simultaneous uploads to an s3 bucket may cause chart index corruption.
+
+```yaml
+    - name: Package and publish chart
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1.0
+      with:
+        action: helm-s3-publish
+        aws_access_key_id: ${{ secrets.CHARTS_AWS_ACCESS_KEY_ID }}
+        aws_secret_access_key: ${{ secrets.CHARTS_AWS_SECRET_ACCESS_KEY }}
+        aws_default_region: us-east-2
+        chart_repo: s3://charts.mobilecoin.com
+        chart_app_version: 0.0.0-dev
+        chart_version: 0.0.0-dev
+        chart_path: ./chart
+```
+
+| with | type | description |
+| --- | --- | --- |
+| `aws_access_key_id` | `string` | AWS Access Key ID for s3 bucket write |
+| `aws_default_region` | `string` | AWS Region for s3 bucket |
+| `aws_secret_access_key` | `string` | AWS Secret Access Key for s3 bucket write |
+| `chart_repo` | `string` | `s3://` Url |
+| `chart_app_version` | `string` | Chart App Version value |
+| `chart_path` | `string` | relative path to chart templates |
+| `chart_version` | `string` | Chart version value |
+
+### namespace-delete
+
+Delete a namespace in the target Rancher/K8s cluster.
+
+```yaml
+    - name: Delete Namespace
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1.0
+      with:
+        action: namespace-delete
         namespace: my-namespace
         rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.RANCHER_URL }}
@@ -183,7 +137,75 @@ Find toolbox pod and activate defined blue/green fog-ingest and retire the "flip
 
 | with | type | description |
 | --- | --- | --- |
-| `ingest_color` | `string` | blue or green |
+| `` | `` |  |
+| `namespace` | `string` | Namespace in target cluster |
+| `rancher_cluster` | `string` | Target cluster name |
+| `rancher_url` | `string` | Rancher Server URL |
+| `rancher_token` | `string` | Rancher API Token |
+
+### namespace-create
+
+Create a namespace and add it to the Default project in the target Rancher/K8s cluster.
+
+```yaml
+    - name: Create Namespace
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1.0
+      with:
+        action: namespace-create
+        namespace: my-namespace
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.RANCHER_URL }}
+        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+```
+
+| with | type | description |
+| --- | --- | --- |
+| `namespace` | `string` | Namespace in target cluster |
+| `rancher_cluster` | `string` | Target cluster name |
+| `rancher_url` | `string` | Rancher Server URL |
+| `rancher_token` | `string` | Rancher API Token |
+
+### pod-restart
+
+Restart pods by scaling the Deployment/StatefulSet to 0 and back to original scale.
+
+```yaml
+    - name: Restart Consensus Nodes
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1.0
+      with:
+        action: pod-restart
+        namespace: my-namespace
+        object_name: deployment.app/consensus-node-1
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.RANCHER_URL }}
+        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+```
+
+| with | type | description |
+| --- | --- | --- |
+| `object_name` | `string` | Object to scale (app.deployment, app.scaleset)
+| `namespace` | `string` | Namespace in target cluster |
+| `rancher_cluster` | `string` | Target cluster name |
+| `rancher_url` | `string` | Rancher Server URL |
+| `rancher_token` | `string` | Rancher API Token |
+
+### pvcs-delete
+
+Delete PersistentVolumeClaims in target namespace/cluster.
+
+```yaml
+    - name: Delete PersistentVolumeClaims
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1.0
+      with:
+        action: pvcs-delete
+        namespace: my-namespace
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.RANCHER_URL }}
+        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+```
+
+| with | type | description |
+| --- | --- | --- |
 | `namespace` | `string` | Namespace in target cluster |
 | `rancher_cluster` | `string` | Target cluster name |
 | `rancher_url` | `string` | Rancher Server URL |
@@ -219,56 +241,6 @@ Create `sample-keys-seeds` secret in target cluster/namespace.
 | `rancher_url` | `string` | Rancher Server URL |
 | `rancher_token` | `string` | Rancher API Token |
 
-### pod-restart
-
-Restart pods by scaling the Deployment/StatefulSet to 0 and back to original scale.
-
-```yaml
-    - name: Restart Consensus Nodes
-      uses: mobilecoinofficial/gha-k8s-toolbox@v1.0
-      with:
-        action: pod-restart
-        namespace: my-namespace
-        object_name: deployment.app/consensus-node-1
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
-        rancher_url: ${{ secrets.RANCHER_URL }}
-        rancher_token: ${{ secrets.RANCHER_TOKEN }}
-```
-
-| with | type | description |
-| --- | --- | --- |
-| `object_name` | `string` | Object to scale (app.deployment, app.scaleset)
-| `namespace` | `string` | Namespace in target cluster |
-| `rancher_cluster` | `string` | Target cluster name |
-| `rancher_url` | `string` | Rancher Server URL |
-| `rancher_token` | `string` | Rancher API Token |
-
-### toolbox-exec
-
-Run a command on the blue/green fog-ingest toolbox pod.
-
-```yaml
-    - name: Run fog-recovery database migrations
-      uses: mobilecoinofficial/gha-k8s-toolbox@v1.0
-      with:
-        action: toolbox-exec
-        ingest_color: blue
-        namespace: my-namespace
-        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
-        rancher_url: ${{ secrets.RANCHER_URL }}
-        rancher_token: ${{ secrets.RANCHER_TOKEN }}
-        command: |
-          /usr/local/bin/fog-sql-recovery-db-migrations
-```
-
-| with | type | description |
-| --- | --- | --- |
-| `ingest_color` | `string` | blue or green |
-| `command` | `string` | command to run on the toolbox pod |
-| `namespace` | `string` | Namespace in target cluster |
-| `rancher_cluster` | `string` | Target cluster name |
-| `rancher_url` | `string` | Rancher Server URL |
-| `rancher_token` | `string` | Rancher API Token |
 
 ### toolbox-copy
 
@@ -298,6 +270,33 @@ Copy a file to the blue/green fog-ingest toolbox pod.
 | `rancher_token` | `string` | Rancher API Token |
 | `src` | `string` | source in action context |
 | `dst` | `string` | destination in toolbox pod |
+
+### toolbox-exec
+
+Run a command on the blue/green fog-ingest toolbox pod.
+
+```yaml
+    - name: Run fog-recovery database migrations
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1.0
+      with:
+        action: toolbox-exec
+        ingest_color: blue
+        namespace: my-namespace
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.RANCHER_URL }}
+        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        command: |
+          /usr/local/bin/fog-sql-recovery-db-migrations
+```
+
+| with | type | description |
+| --- | --- | --- |
+| `ingest_color` | `string` | blue or green |
+| `command` | `string` | command to run on the toolbox pod |
+| `namespace` | `string` | Namespace in target cluster |
+| `rancher_cluster` | `string` | Target cluster name |
+| `rancher_url` | `string` | Rancher Server URL |
+| `rancher_token` | `string` | Rancher API Token |
 
 ## Build and CI
 
