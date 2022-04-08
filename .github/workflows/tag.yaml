@@ -29,11 +29,11 @@ jobs:
     - name: Get major and minor values for new tag
       id: tags
       env:
-        TAG: ${{ steps.bump.outputs.tag }}
+        TAG: ${{ steps.bump.outputs.new_tag }}
       run: |
         export MAJOR_MINOR=${TAG%.*}
         export MAJOR=${MAJOR_MINOR%.*}
-        git tag "${MAJOR}"
-        git tag "${MAJOR_MINOR}"
-        git tag "${TAG}"
-        git push --tags --force
+        git tag --force "${MAJOR}"
+        git tag --force "${MAJOR_MINOR}"
+        git tag --force "${TAG}"
+        git push --tags
