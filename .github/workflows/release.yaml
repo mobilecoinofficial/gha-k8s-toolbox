@@ -6,6 +6,9 @@ on:
     tags:
     - 'v*.*.*'
 
+permissions:
+  contents: write
+
 jobs:
   gh-release:
     runs-on: [self-hosted, Linux, small]
