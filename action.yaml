@@ -27,7 +27,7 @@ inputs:
   chart_repo:
     description: "url for chart repo"
     required: false
-  chart_set: 
+  chart_set:
     description: "new line list of --set commands"
     required: false
   chart_values:
@@ -68,7 +68,7 @@ inputs:
     description: "rancher project"
     required: false
     default: "default"
-  rancher_token: 
+  rancher_token:
     description: "Rancher Auth Token"
     required: false
   rancher_url:
@@ -85,6 +85,6 @@ inputs:
     required: false
 runs:
   using: 'docker'
-  image: mobilecoin/gha-k8s-toolbox:v1.0
+  image: docker://mobilecoin/gha-k8s-toolbox:v1.0
   args:
   - ${{ inputs.command }}
