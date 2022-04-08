@@ -1,0 +1,18 @@
+# Copyright (c) 2022 MobileCoin Inc.
+name: release
+
+on:
+  push:
+    tags:
+    - 'v*.*.*'
+
+jobs:
+  gh-release:
+    runs-on: [self-hosted, Linux, small]
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+    - name: Create a GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        generate_release_notes: true

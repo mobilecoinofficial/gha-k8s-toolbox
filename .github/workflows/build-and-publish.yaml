@@ -1,0 +1,47 @@
+# Copyright (c) 2022 MobileCoin Inc.
+name: build-and-publish
+
+on:
+  push:
+    tags:
+    - 'v*.*.*'
+  pull_request: {}
+
+env:
+  DOCKER_REPO: mobilecoin/gha-k8s-toolbox
+
+jobs:
+  docker:
+    runs-on: [self-hosted, Linux, small]
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Generate Docker Tags
+      id: meta
+      uses: docker/metadata-action@v3
+      with:
+        images: ${{ env.DOCKER_REPO }}
+        tags: |
+          type=ref,event=pr,priority=30
+          type=semver,pattern=v{{major}},priority=22
+          type=semver,pattern=v{{major}}.{{minor}},priority=21
+          type=semver,pattern=v{{version}},priority=20
+          type=sha,priority=10
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
+
+    - name: Login to DockerHub
+      uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Build and Publish to DockerHub
+      uses: docker/build-push-action@v2
+      with:
+        context: .
+        # Don't push on pull_request, just build and check for errors
+        push: ${{ github.event_name == 'pull_request' && 'false' || 'true' }}
+        tags: ${{ steps.meta.outputs.tags }}
