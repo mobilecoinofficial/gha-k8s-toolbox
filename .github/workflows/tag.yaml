@@ -6,27 +6,26 @@ on:
     branches:
       - main
 
-permissions:
-  contents: write
-
 jobs:
   tag:
     runs-on: [self-hosted, Linux, small]
     steps:
+    # We need to use an external PAT here because GHA will not run downstream events if we use the built in token.
     - name: Checkout
       uses: actions/checkout@v3
+      with:
+        token: ${{ secrets.ACTIONS_TOKEN }}
 
-    # We need to use an external PAT here because GHA will not run downstream events if we use the built in token.
     - name: Bump GitHub tag
       id: bump
       uses: anothrNick/github-tag-action@1.36.0
       env:
         GITHUB_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
-        WITH_V: "true"
+        WITH_V: 'true'
         DEFAULT_BUMP: patch
+        DRY_RUN: 'true'
 
-    # Use built in token here because we don't need downstream events for these tags.
-    # Doing manual tag because anothrNick/github-tag-action won't retag a commit.
+    # Doing manual tags because anothrNick/github-tag-action won't retag a commit.
     - name: Get major and minor values for new tag
       id: tags
       env:
@@ -34,6 +33,7 @@ jobs:
       run: |
         export MAJOR_MINOR=${TAG%.*}
         export MAJOR=${MAJOR_MINOR%.*}
-        git tag "${MAJOR_MINOR}"
         git tag "${MAJOR}"
-        git push --tags
+        git tag "${MAJOR_MINOR}"
+        git tag "${TAG}"
+        git push --tags --force
