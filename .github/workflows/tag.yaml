@@ -36,4 +36,4 @@ jobs:
         git tag --force "${MAJOR}"
         git tag --force "${MAJOR_MINOR}"
         git tag --force "${TAG}"
-        git push --tags
+        git push --tags --force
