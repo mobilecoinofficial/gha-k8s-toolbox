@@ -361,8 +361,8 @@ then
                 --from-literal=FOG_REPORT_SIGNING_CA_CERT="${INPUT_FOG_REPORT_SIGNING_CA_CERT}"
             ;;
 
-        secrets-create-from-dir)
-            # Create a secret from files in a directory
+        secrets-create-from-file)
+            # Create a secret from file or all files in a directory
             rancher_get_kubeconfig
             is_set INPUT_NAMESPACE
             is_set INPUT_SRC
