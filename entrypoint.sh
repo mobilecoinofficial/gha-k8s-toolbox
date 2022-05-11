@@ -104,7 +104,7 @@ then
             rancher_get_kubeconfig
             is_set INPUT_NAMESPACE
             is_set INPUT_INGEST_COLOR
-            
+
             if [ "${INPUT_INGEST_COLOR}" == "blue" ]
             then
                 flipside="green"
@@ -257,7 +257,7 @@ then
                     --sign \
                     --keyring="${INPUT_CHART_PGP_KEYRING_PATH}" \
                     --key="${INPUT_CHART_PGP_KEY}"
-            else 
+            else
                 echo "-- Package unsigned chart"
                 helm package "${INPUT_CHART_PATH}" \
                     -d ".tmp/charts" \
@@ -297,7 +297,7 @@ then
             # Add namespace to Default project
             # Get cluster data and resource links
             echo "-- Query Rancher for cluster info"
-            cluster=$(curl --retry 5 -sSLf -H "${auth_header}" "${INPUT_RANCHER_URL}/v3/clusters/?name=${INPUT_RANCHER_CLUSTER}") 
+            cluster=$(curl --retry 5 -sSLf -H "${auth_header}" "${INPUT_RANCHER_URL}/v3/clusters/?name=${INPUT_RANCHER_CLUSTER}")
 
             namespaces_url=$(echo "${cluster}" | jq -r .data[0].links.namespaces)
             projects_url=$(echo "${cluster}" | jq -r .data[0].links.projects)
@@ -321,7 +321,7 @@ then
             rancher_get_kubeconfig
             is_set INPUT_NAMESPACE
             is_set INPUT_OBJECT_NAME
-            
+
             replicas=$(k get -n "${INPUT_NAMESPACE}" "${INPUT_OBJECT_NAME}" -o=jsonpath='{.spec.replicas}{"\n"}')
             echo "${INPUT_OBJECT_NAME} original scale: ${replicas}"
 
@@ -359,6 +359,19 @@ then
                 --from-literal=FOG_KEYS_SEED="${INPUT_FOG_KEYS_SEED}" \
                 --from-literal=INITIAL_KEYS_SEED="${INPUT_INITIAL_KEYS_SEED}" \
                 --from-literal=FOG_REPORT_SIGNING_CA_CERT="${INPUT_FOG_REPORT_SIGNING_CA_CERT}"
+            ;;
+
+        secrets-create-from-dir)
+            # Create a secret from files in a directory
+            rancher_get_kubeconfig
+            is_set INPUT_NAMESPACE
+            is_set INPUT_SRC
+            is_set INPUT_OBJECT_NAME
+
+            k delete secret "${INPUT_OBJECT_NAME}" -n "${INPUT_NAMESPACE}" --now --wait --request-timeout=5m --ignore-not-found
+
+            k create secret generic "${INPUT_OBJECT_NAME}" -n "${INPUT_NAMESPACE}" \
+                --from-file="${INPUT_SRC}"
             ;;
 
         toolbox-copy)

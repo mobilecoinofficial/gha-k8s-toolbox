@@ -62,7 +62,7 @@ inputs:
     description: "kubernetes namespace"
     required: false
   object_name:
-    description: "k8s object to scale"
+    description: "k8s object to manipulate"
     required: false
   rancher_project:
     description: "rancher project"
