@@ -84,7 +84,7 @@ inputs:
     description: "File to copy into toolbox"
     required: false
 runs:
-  using: 'docker'
-  image: docker://mobilecoin/gha-k8s-toolbox:v1.0
+  using: docker
+  image: Dockerfile
   args:
   - ${{ inputs.command }}
