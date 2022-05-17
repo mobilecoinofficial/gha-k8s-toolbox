@@ -27,6 +27,12 @@ inputs:
   chart_repo:
     description: "url for chart repo"
     required: false
+  chart_repo_username:
+    description: "Username for private chart repo"
+    required: false
+  chart_repo_password:
+    description: "Password for private chart repo"
+    required: false
   chart_set:
     description: "new line list of --set commands"
     required: false
