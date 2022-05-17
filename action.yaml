@@ -27,6 +27,12 @@ inputs:
   chart_repo:
     description: "url for chart repo"
     required: false
+  chart_repo_username:
+    description: "Username for private chart repo"
+    required: false
+  chart_repo_password:
+    description: "Password for private chart repo"
+    required: false
   chart_set:
     description: "new line list of --set commands"
     required: false
@@ -62,7 +68,7 @@ inputs:
     description: "kubernetes namespace"
     required: false
   object_name:
-    description: "k8s object to scale"
+    description: "k8s object to manipulate"
     required: false
   rancher_project:
     description: "rancher project"
@@ -84,7 +90,7 @@ inputs:
     description: "File to copy into toolbox"
     required: false
 runs:
-  using: 'docker'
+  using: docker
   image: docker://mobilecoin/gha-k8s-toolbox:v1.0
   args:
   - ${{ inputs.command }}
