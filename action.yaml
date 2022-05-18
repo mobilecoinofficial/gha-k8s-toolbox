@@ -91,6 +91,7 @@ inputs:
     required: false
 runs:
   using: docker
-  image: docker://mobilecoin/gha-k8s-toolbox:v1.0
+  image: Dockerfile
+  # image: docker://mobilecoin/gha-k8s-toolbox:v1.0
   args:
   - ${{ inputs.command }}

@@ -199,7 +199,7 @@ then
             then
                 helm_upgrade_with_values repo "${set_options}"
             else
-                helm_upgrade repo "${sets}"
+                helm_upgrade repo "${set_options}"
             fi
             ;;
 
