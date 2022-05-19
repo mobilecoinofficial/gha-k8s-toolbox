@@ -63,6 +63,7 @@ helm_upgrade()
         if helm upgrade "${INPUT_RELEASE_NAME}" "${repo_name}/${INPUT_CHART_NAME}" \
             -i --wait --timeout="${INPUT_CHART_WAIT_TIMEOUT}" \
             --namespace "${INPUT_NAMESPACE}" \
+            --reset-values \
             --version "${INPUT_CHART_VERSION}" ${sets}
         then
             echo_exit "Deploy Successful"
@@ -86,6 +87,7 @@ helm_upgrade_with_values()
             -i --wait --timeout="${INPUT_CHART_WAIT_TIMEOUT}" \
             -f "${INPUT_CHART_VALUES}" \
             --namespace "${INPUT_NAMESPACE}" \
+            --reset-values \
             --version "${INPUT_CHART_VERSION}" ${sets}
         then
             echo_exit "Deploy Successful"
