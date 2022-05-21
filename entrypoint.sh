@@ -102,6 +102,7 @@ if [ -n "${INPUT_ACTION}" ]
 then
     case "${INPUT_ACTION}" in
         fog-ingest-activate)
+            # CBB: we do a lot of copy pasta for "standard" commands, we should make functions.
             # Activate target blue/green fog-ingest. Retire flipside ingest if it exists.
             rancher_get_kubeconfig
             is_set INPUT_NAMESPACE
@@ -139,7 +140,7 @@ then
                 do
                     echo "--- checking insecure-fog-ingest://${p}:3226"
                     command="RUST_LOG=error fog_ingest_client --uri 'insecure-fog-ingest://${p}:3226' get-status"
-                    result=$(k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -- /bin/bash -c "${command}")
+                    result=$(k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -c toolbox -- /bin/bash -c "${command}")
                     echo "${result}" | jq -r .
                     mode=$(echo "${result}" | jq -r .mode)
 
@@ -147,7 +148,7 @@ then
                     then
                         echo "-- ${p} Active ingest found, retiring."
                         command="RUST_LOG=error fog_ingest_client --uri 'insecure-fog-ingest://${p}:3226' retire | jq -r ."
-                        k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -- /bin/bash -c "${command}"
+                        k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -c toolbox -- /bin/bash -c "${command}"
                         active_found="yes"
                     fi
                 done
@@ -165,7 +166,7 @@ then
             do
                 echo "--- checking insecure-fog-ingest://${p}:3226"
                 command="RUST_LOG=error fog_ingest_client --uri 'insecure-fog-ingest://${p}:3226' get-status"
-                result=$(k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -- /bin/bash -c "${command}")
+                result=$(k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -c toolbox -- /bin/bash -c "${command}")
                 echo "${result}" | jq -r .
                 mode=$(echo "${result}" | jq -r .mode)
                 peer_keys[${p}]=$(echo "${result}" | jq -r .ingress_pubkey)
@@ -181,12 +182,12 @@ then
 
             # does fog_ingest_client have get-ingress-public-key-records
             command="fog_ingest_client --help | grep get-ingress-public-key-records"
-            if k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -- /bin/bash -c "${command}"
+            if k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -c toolbox -- /bin/bash -c "${command}"
             then
 
                 echo "-- checking for existing key records"
                 command="RUST_LOG=error fog_ingest_client --uri 'insecure-fog-ingest://${instance}-0.${instance}:3226' get-ingress-public-key-records"
-                result=$(k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -- /bin/bash -c "${command}")
+                result=$(k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -c toolbox -- /bin/bash -c "${command}")
                 echo "${result}"
                 key_records=$(echo "${result}" | jq -r '.[] | .ingress_public_key')
 
@@ -201,8 +202,8 @@ then
                             if [[ "${pk}" == "${peer_keys[${peer}]}" ]]
                             then
                                 echo "-- Found active key on ${peer} - activating now."
-                                command="RUST_LOG=error fog_ingest_client --uri 'insecure-fog-ingest://${peer}:3226' activate"
-                                k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -- /bin/bash -c "${command}"
+                                command="RUST_LOG=error fog_ingest_client --uri 'insecure-fog-ingest://${peer}:3226' activate | jq -r ."
+                                k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -c toolbox -- /bin/bash -c "${command}"
 
                                 exit 0
                             fi
@@ -218,8 +219,8 @@ then
             fi
 
             echo "-- No Active Primary ingest found. Activating ingest 0."
-            command="RUST_LOG=error fog_ingest_client --uri 'insecure-fog-ingest://${instance}-0.${instance}:3226' activate"
-            k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -- /bin/bash -c "${command}"
+            command="RUST_LOG=error fog_ingest_client --uri 'insecure-fog-ingest://${instance}-0.${instance}:3226' activate | jq -r ."
+            k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -c toolbox -- /bin/bash -c "${command}"
             ;;
 
         helm-deploy)
@@ -513,7 +514,7 @@ then
             echo "-- execute command:"
             echo "   ${INPUT_COMMAND}"
             echo ""
-            k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -- /bin/bash -c "${INPUT_COMMAND}"
+            k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -c toolbox -- /bin/bash -c "${INPUT_COMMAND}"
             ;;
 
         *)
