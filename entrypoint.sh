@@ -107,6 +107,8 @@ then
             is_set INPUT_NAMESPACE
             is_set INPUT_INGEST_COLOR
 
+            declare -A peer_keys
+
             if [ "${INPUT_INGEST_COLOR}" == "blue" ]
             then
                 flipside="green"
@@ -135,13 +137,16 @@ then
                 echo "-- Looking for Active flipside ingest"
                 for p in "${flipside_peers[@]}"
                 do
-                    command="fog_ingest_client --uri 'insecure-fog-ingest://${p}:3226' get-status 2>/dev/null | jq -r .mode"
-                    mode=$(k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -- /bin/bash -c "${command}")
+                    echo "--- checking insecure-fog-ingest://${p}:3226"
+                    command="RUST_LOG=error fog_ingest_client --uri 'insecure-fog-ingest://${p}:3226' get-status"
+                    result=$(k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -- /bin/bash -c "${command}")
+                    echo "${result}" | jq -r .
+                    mode=$(echo "${result}" | jq -r .mode)
 
                     if [ "${mode}" == "Active" ]
                     then
                         echo "-- ${p} Active ingest found, retiring."
-                        command="fog_ingest_client --uri 'insecure-fog-ingest://${p}:3226' retire 2>/dev/null | jq -r ."
+                        command="RUST_LOG=error fog_ingest_client --uri 'insecure-fog-ingest://${p}:3226' retire | jq -r ."
                         k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -- /bin/bash -c "${command}"
                         active_found="yes"
                     fi
@@ -158,8 +163,12 @@ then
             echo "-- Check Primary for active ingest"
             for p in "${peers[@]}"
             do
-                command="fog_ingest_client --uri 'insecure-fog-ingest://${p}:3226' get-status 2>/dev/null | jq -r .mode"
-                mode=$(k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -- /bin/bash -c "${command}")
+                echo "--- checking insecure-fog-ingest://${p}:3226"
+                command="RUST_LOG=error fog_ingest_client --uri 'insecure-fog-ingest://${p}:3226' get-status"
+                result=$(k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -- /bin/bash -c "${command}")
+                echo "${result}" | jq -r .
+                mode=$(echo "${result}" | jq -r .mode)
+                peer_keys[${p}]=$(echo "${result}" | jq -r .ingress_pubkey)
 
                 if [ "${mode}" == "Active" ]
                 then
@@ -167,8 +176,45 @@ then
                 fi
             done
 
+            # We can run into a lost keys issue by not checking for an "active" key that isn't on an active ingest.
+            #  use get-ingress-public-key-records to list keys and activate matching key if one exists.
+
+            # does fog_ingest_client have get-ingress-public-key-records
+            command="fog_ingest_client --help | grep get-ingress-public-key-records"
+            if k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -- /bin/bash -c "${command}"
+            then
+
+                echo "-- checking for existing key records"
+                command="RUST_LOG=error fog_ingest_client --uri 'insecure-fog-ingest://${instance}-0.${instance}:3226' get-ingress-public-key-records"
+                result=$(k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -- /bin/bash -c "${command}")
+                echo "${result}"
+                key_records=$(echo "${result}" | jq -r '.[] | .ingress_public_key')
+
+                if [[ -n "${key_records}" ]]
+                then
+                    for pk in ${key_records}
+                    do
+                        # if there are records list check against the keys on the current primary nodes
+                        for peer in "${!peer_keys[@]}"
+                        do
+                            # if the keys match, then activate.
+                            if [[ "${pk}" == "${peer_keys[${peer}]}" ]]
+                            then
+                                echo "-- Found active key on ${peer} - activating now."
+                                command="RUST_LOG=error fog_ingest_client --uri 'insecure-fog-ingest://${peer}:3226' activate"
+                                k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -- /bin/bash -c "${command}"
+
+                                exit 0
+                            fi
+                        done
+                    done
+                else
+                    echo "-- no key records found (this is good)"
+                fi
+            fi
+
             echo "-- No Active Primary ingest found. Activating ingest 0."
-            command="fog_ingest_client --uri 'insecure-fog-ingest://${instance}-0.${instance}:3226' activate"
+            command="RUST_LOG=error fog_ingest_client --uri 'insecure-fog-ingest://${instance}-0.${instance}:3226' activate"
             k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -- /bin/bash -c "${command}"
             ;;
 
@@ -401,22 +447,6 @@ then
                 echo "-- Delete PVC ${p}"
                 k delete pvc "${p}" -n "${INPUT_NAMESPACE}" --now --wait --request-timeout=5m --ignore-not-found
             done
-            ;;
-
-        sample-keys-create-secrets)
-            # Create a secret in the dev env to store the certs and seeds used to regenerate wallet keys and initial ledger.
-            rancher_get_kubeconfig
-            is_set INPUT_NAMESPACE
-            is_set INPUT_INITIAL_KEYS_SEED
-            is_set INPUT_FOG_KEYS_SEED
-            is_set INPUT_FOG_REPORT_SIGNING_CA_CERT
-
-            k delete secret sample-keys-seeds -n "${INPUT_NAMESPACE}" --now --wait --request-timeout=5m --ignore-not-found
-
-            k create secret generic sample-keys-seeds -n "${INPUT_NAMESPACE}" \
-                --from-literal=FOG_KEYS_SEED="${INPUT_FOG_KEYS_SEED}" \
-                --from-literal=INITIAL_KEYS_SEED="${INPUT_INITIAL_KEYS_SEED}" \
-                --from-literal=FOG_REPORT_SIGNING_CA_CERT="${INPUT_FOG_REPORT_SIGNING_CA_CERT}"
             ;;
 
         secrets-create-from-file)
