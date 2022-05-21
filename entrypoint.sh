@@ -208,6 +208,10 @@ then
                             fi
                         done
                     done
+
+                    echo "-- Houston we have a problem. We have active keys that don't match any running ingest servers."
+                    exit 1
+
                 else
                     echo "-- no key records found (this is good)"
                 fi
