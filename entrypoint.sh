@@ -432,13 +432,25 @@ then
             is_set INPUT_OBJECT_NAME
 
             replicas=$(k get -n "${INPUT_NAMESPACE}" "${INPUT_OBJECT_NAME}" -o=jsonpath='{.spec.replicas}{"\n"}')
-            echo "${INPUT_OBJECT_NAME} original scale: ${replicas}"
+            echo "-- ${INPUT_OBJECT_NAME} original scale: ${replicas}"
 
-            echo "Scale ${INPUT_OBJECT_NAME} to 0"
+            echo "-- Scale ${INPUT_OBJECT_NAME} to 0"
             k scale -n "${INPUT_NAMESPACE}" "${INPUT_OBJECT_NAME}" --replicas=0 --timeout=5m
 
-            echo "Scale  ${INPUT_OBJECT_NAME} to ${replicas}"
+            # Give a pause to wait for api to stabilize.
+            sleep 10
+
+            echo "-- Scale  ${INPUT_OBJECT_NAME} to ${replicas}"
             k scale -n "${INPUT_NAMESPACE}" "${INPUT_OBJECT_NAME}" --replicas="${replicas}" --timeout=5m
+
+            # Need to wait for pods to become healthy.
+            echo "--- Sleep 60 to wait for new pods to show up."
+            sleep 60
+
+            # Get pods by match labels - yeah jsonpath AND jq!
+            labels=$(k get -n "${INPUT_NAMESPACE}" "${INPUT_OBJECT_NAME}" -o=jsonpath='{.spec.selector.matchLabels}' | jq -r 'to_entries | .[] |= "\(.key)=\(.value)" | join(",")')
+
+            k wait -n "${INPUT_NAMESPACE}" --for=condition=Ready pod -l "${labels}" --timeout=15m
             ;;
 
         pvcs-delete)
