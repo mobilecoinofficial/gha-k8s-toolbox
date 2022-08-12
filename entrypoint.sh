@@ -531,7 +531,7 @@ then
         kubectl-exec)
 	    # setup kubeconfig and execute supplied command
             rancher_get_kubeconfig
-            exec "$@"
+            exec /bin/bash -c "$@"
 	    ;;
         *)
             error_exit "Command ${INPUT_ACTION} not recognized"
