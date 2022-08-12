@@ -273,10 +273,10 @@ Copy a file to the blue/green fog-ingest toolbox pod.
 
 ### kubectl-exec
 
-Run a command on the blue/green fog-ingest toolbox pod.
+Run commands that have access to the specified rancher cluster
 
 ```yaml
-    - name: Run fog-recovery database migrations
+    - name: Run kubectl diff to output diff
       uses: mobilecoinofficial/gha-k8s-toolbox@v1.0
       with:
         action: kubectl-exec
