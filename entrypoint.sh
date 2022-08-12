@@ -528,7 +528,7 @@ then
             echo ""
             k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -c toolbox -- /bin/bash -c "${INPUT_COMMAND}"
             ;;
-        kubectl)
+        kubectl-exec)
 	    # setup kubeconfig and execute supplied command
             rancher_get_kubeconfig
             exec "$@"
