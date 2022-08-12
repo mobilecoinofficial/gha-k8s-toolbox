@@ -289,14 +289,10 @@ Run commands that have access to the specified rancher cluster
 
 | with | type | description |
 | --- | --- | --- |
-| `ingest_color` | `string` | blue or green |
 | `command` | `string` | command to run on the toolbox pod |
-| `namespace` | `string` | Namespace in target cluster |
 | `rancher_cluster` | `string` | Target cluster name |
 | `rancher_url` | `string` | Rancher Server URL |
 | `rancher_token` | `string` | Rancher API Token |
-| `src` | `string` | source in action context |
-| `dst` | `string` | destination in toolbox pod |
 
 ### toolbox-exec
 
