@@ -271,6 +271,33 @@ Copy a file to the blue/green fog-ingest toolbox pod.
 | `src` | `string` | source in action context |
 | `dst` | `string` | destination in toolbox pod |
 
+### kubectl-exec
+
+Run a command on the blue/green fog-ingest toolbox pod.
+
+```yaml
+    - name: Run fog-recovery database migrations
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1.0
+      with:
+        action: kubectl-exec
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.RANCHER_URL }}
+        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        command: |
+          helm template . | k diff -f -
+```
+
+| with | type | description |
+| --- | --- | --- |
+| `ingest_color` | `string` | blue or green |
+| `command` | `string` | command to run on the toolbox pod |
+| `namespace` | `string` | Namespace in target cluster |
+| `rancher_cluster` | `string` | Target cluster name |
+| `rancher_url` | `string` | Rancher Server URL |
+| `rancher_token` | `string` | Rancher API Token |
+| `src` | `string` | source in action context |
+| `dst` | `string` | destination in toolbox pod |
+
 ### toolbox-exec
 
 Run a command on the blue/green fog-ingest toolbox pod.
