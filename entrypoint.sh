@@ -98,6 +98,14 @@ helm_upgrade_with_values()
     error_exit "Helm Deployment Failed"
 }
 
+toolbox_cmd()
+{
+    pod="${1}"
+    command="${2}"
+
+    k exec -n "${INPUT_NAMESPACE}" "${pod}" -c toolbox -- /bin/bash -c "${command}"
+}
+
 if [ -n "${INPUT_ACTION}" ]
 then
     case "${INPUT_ACTION}" in
@@ -109,6 +117,8 @@ then
             is_set INPUT_INGEST_COLOR
 
             declare -A peer_keys
+            active_found="no"
+            retired="no"
 
             if [ "${INPUT_INGEST_COLOR}" == "blue" ]
             then
@@ -140,7 +150,7 @@ then
                 do
                     echo "--- checking insecure-fog-ingest://${p}:3226"
                     command="RUST_LOG=error fog_ingest_client --uri 'insecure-fog-ingest://${p}:3226' get-status"
-                    result=$(k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -c toolbox -- /bin/bash -c "${command}")
+                    result=$(toolbox_cmd "${toolbox}" "${command}")
                     echo "${result}" | jq -r .
                     mode=$(echo "${result}" | jq -r .mode)
 
@@ -148,8 +158,9 @@ then
                     then
                         echo "-- ${p} Active ingest found, retiring."
                         command="RUST_LOG=error fog_ingest_client --uri 'insecure-fog-ingest://${p}:3226' retire | jq -r ."
-                        k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -c toolbox -- /bin/bash -c "${command}"
+                        toolbox_cmd "${toolbox}" "${command}"
                         active_found="yes"
+                        retired="yes"
                     fi
                 done
 
@@ -166,7 +177,7 @@ then
             do
                 echo "--- checking insecure-fog-ingest://${p}:3226"
                 command="RUST_LOG=error fog_ingest_client --uri 'insecure-fog-ingest://${p}:3226' get-status"
-                result=$(k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -c toolbox -- /bin/bash -c "${command}")
+                result=$(toolbox_cmd "${toolbox}" "${command}")
                 echo "${result}" | jq -r .
                 mode=$(echo "${result}" | jq -r .mode)
                 peer_keys[${p}]=$(echo "${result}" | jq -r .ingress_pubkey)
@@ -182,13 +193,13 @@ then
 
             # does fog_ingest_client have get-ingress-public-key-records
             command="fog_ingest_client --help | grep get-ingress-public-key-records"
-            if k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -c toolbox -- /bin/bash -c "${command}"
+            if toolbox_cmd "${INPUT_NAMESPACE}" "${toolbox}" "${command}"
             then
-
                 echo "-- checking for existing key records"
                 command="RUST_LOG=error fog_ingest_client --uri 'insecure-fog-ingest://${instance}-0.${instance}:3226' get-ingress-public-key-records"
-                result=$(k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -c toolbox -- /bin/bash -c "${command}")
+                result=$(toolbox_cmd "${toolbox}" "${command}")
                 echo "${result}"
+
                 key_records=$(echo "${result}" | jq -r '.[] | .ingress_public_key')
 
                 if [[ -n "${key_records}" ]]
@@ -203,7 +214,7 @@ then
                             then
                                 echo "-- Found active key on ${peer} - activating now."
                                 command="RUST_LOG=error fog_ingest_client --uri 'insecure-fog-ingest://${peer}:3226' activate | jq -r ."
-                                k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -c toolbox -- /bin/bash -c "${command}"
+                                toolbox_cmd "${toolbox}" "${command}"
 
                                 exit 0
                             fi
@@ -220,7 +231,41 @@ then
 
             echo "-- No Active Primary ingest found. Activating ingest 0."
             command="RUST_LOG=error fog_ingest_client --uri 'insecure-fog-ingest://${instance}-0.${instance}:3226' activate | jq -r ."
-            k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -c toolbox -- /bin/bash -c "${command}"
+            toolbox_cmd "${toolbox}" "${command}"
+
+
+            if [[ "${retired}" == "yes" ]]
+            then
+                echo "-- Progress block chain to finish ${flipside} retirement"
+                # what do we need at this point?
+                # if we made it here we have already run fog-distribution
+                # generate keys
+                #
+                # fog-test-client
+                echo "  -- Generate keys from seeds"
+                command="INITIALIZE_LEDGER='true' FOG_REPORT_URL='fog://fog.${INPUT_NAMESPACE}.development.mobilecoin.com:443' /util/generate_origin_data.sh"
+                toolbox_cmd "${toolbox}" "${command}"
+
+                echo "  -- Use Fog test_client to generate blocks to finish retire of ${flipside}"
+                command="/test/fog-test-client.sh --key-dir /tmp/sample_data/fog_keys --token-id 0"
+
+                # check active/retired status, if both nodes are not idle we error out.
+                echo "  -- Check ingest status to see if we made it to retired"
+                for p in "${flipside_peers[@]}"
+                do
+                    echo "  -- checking insecure-fog-ingest://${p}:3226"
+                    command="RUST_LOG=error fog_ingest_client --uri 'insecure-fog-ingest://${p}:3226' get-status"
+                    result=$(toolbox_cmd "${toolbox}" "${command}")
+                    echo "${result}" | jq -r .
+                    mode=$(echo "${result}" | jq -r .mode)
+                    if [[ "${mode}" == "Active" ]]
+                    then
+                        echo "-- ERROR: Oh No, ${p} is still Active, this node should have transitioned to Idle"
+                        exit 1
+                    fi
+                done
+                echo "-- ${flipside} ingest successfully retired"
+            fi
             ;;
 
         helm-deploy)
@@ -526,7 +571,7 @@ then
             echo "-- execute command:"
             echo "   ${INPUT_COMMAND}"
             echo ""
-            k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -c toolbox -- /bin/bash -c "${INPUT_COMMAND}"
+            toolbox_cmd "${INPUT_NAMESPACE}" "${toolbox}" "${INPUT_COMMAND}"
             ;;
         kubectl-exec)
 	    # setup kubeconfig and execute supplied command
