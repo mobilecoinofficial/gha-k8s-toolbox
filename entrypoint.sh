@@ -193,7 +193,7 @@ then
 
             # does fog_ingest_client have get-ingress-public-key-records
             command="fog_ingest_client --help | grep get-ingress-public-key-records"
-            if toolbox_cmd "${INPUT_NAMESPACE}" "${toolbox}" "${command}"
+            if toolbox_cmd "${toolbox}" "${command}"
             then
                 echo "-- checking for existing key records"
                 command="RUST_LOG=error fog_ingest_client --uri 'insecure-fog-ingest://${instance}-0.${instance}:3226' get-ingress-public-key-records"
@@ -247,7 +247,7 @@ then
                 toolbox_cmd "${toolbox}" "${command}"
 
                 echo "  -- Use Fog test_client to generate blocks to finish retire of ${flipside}"
-                command="/test/fog-test-client.sh --key-dir /tmp/sample_data/fog_keys --token-id 0"
+                command="RUST_LOG=info /test/fog-test-client.sh --key-dir /tmp/sample_data/fog_keys --token-id 0"
 
                 # check active/retired status, if both nodes are not idle we error out.
                 echo "  -- Check ingest status to see if we made it to retired"
