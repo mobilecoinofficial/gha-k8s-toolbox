@@ -6,15 +6,6 @@ inputs:
   action:
     description: "builtin action to run (See README.md)"
     required: true
-  aws_access_key_id:
-    description: "aws credential for s3 repo"
-    required: false
-  aws_default_region:
-    description: "aws region for s3 repo"
-    required: false
-  aws_secret_access_key:
-    description: "aws credential for s3 repo"
-    required: false
   chart_app_version:
     description: "chart appVersion for publish"
     required: false

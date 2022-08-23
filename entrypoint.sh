@@ -374,59 +374,6 @@ then
             helm cm-push --force ".tmp/charts/${chart_name}-${INPUT_CHART_VERSION}.tgz" repo
             ;;
 
-        helm-s3-publish)
-            # Publish a helm chart to an S3 bucket
-            is_set INPUT_CHART_APP_VERSION
-            is_set INPUT_CHART_PATH
-            is_set INPUT_CHART_VERSION
-            is_set INPUT_AWS_ACCESS_KEY_ID
-            is_set INPUT_AWS_DEFAULT_REGION
-            is_set INPUT_AWS_SECRET_ACCESS_KEY
-            is_set INPUT_CHART_REPO
-
-            # Convert input to AWS env vars.
-            export AWS_ACCESS_KEY_ID="${INPUT_AWS_ACCESS_KEY_ID}"
-            export AWS_DEFAULT_REGION="${INPUT_AWS_DEFAULT_REGION}"
-            export AWS_SECRET_ACCESS_KEY="${INPUT_AWS_SECRET_ACCESS_KEY}"
-
-            if [ "${INPUT_CHART_SIGN}" == "true" ]
-            then
-                is_set INPUT_CHART_PGP_KEYRING_PATH
-                is_set INPUT_CHART_PGP_KEY_NAME
-            fi
-
-            echo "-- Create chart tmp dir - .tmp/charts"
-            mkdir -p ".tmp/charts"
-
-            echo "-- Updating chart dependencies"
-            helm dependency update "${INPUT_CHART_PATH}"
-
-            if [ "${INPUT_CHART_SIGN}" == "true" ]
-            then
-                echo "-- Package and sign chart with provided pgp key"
-                helm package "${INPUT_CHART_PATH}" \
-                    -d ".tmp/charts" \
-                    --app-version="${CHART_APP_VERSION}" \
-                    --version="${INPUT_CHART_VERSION}" \
-                    --sign \
-                    --keyring="${INPUT_CHART_PGP_KEYRING_PATH}" \
-                    --key="${INPUT_CHART_PGP_KEY}"
-            else
-                echo "-- Package unsigned chart"
-                helm package "${INPUT_CHART_PATH}" \
-                    -d ".tmp/charts" \
-                    --app-version="${INPUT_CHART_APP_VERSION}" \
-                    --version="${INPUT_CHART_VERSION}"
-            fi
-
-            echo "-- Add chart repo ${INPUT_CHART_REPO}"
-            helm repo add repo "${INPUT_CHART_REPO}"
-
-            echo "-- Push chart"
-            chart_name=$(basename "${INPUT_CHART_PATH}")
-            helm s3 push --relative --force ".tmp/charts/${chart_name}-${INPUT_CHART_VERSION}.tgz" repo
-            ;;
-
         namespace-delete)
             # Delete namespace in target cluster.
             rancher_get_kubeconfig
