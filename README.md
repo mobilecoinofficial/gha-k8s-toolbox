@@ -90,35 +90,32 @@ Delete a helm release in the target namespace/cluster.
 | `rancher_url` | `string` | Rancher Server URL |
 | `rancher_token` | `string` | Rancher API Token |
 
-### helm-s3-publish
+### helm-publish
 
-Publish a helm chart to an s3 bucket.
-
-⚠️ Note: Run these jobs with a concurrency of one. Running simultaneous uploads to an s3 bucket may cause chart index corruption.
+Publish a helm chart to a harbor repo.
 
 ```yaml
-    - name: Package and publish chart
-      uses: mobilecoinofficial/gha-k8s-toolbox@v1.0
+    - name: Publish chart
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
-        action: helm-s3-publish
-        aws_access_key_id: ${{ secrets.CHARTS_AWS_ACCESS_KEY_ID }}
-        aws_secret_access_key: ${{ secrets.CHARTS_AWS_SECRET_ACCESS_KEY }}
-        aws_default_region: us-east-2
-        chart_repo: s3://charts.mobilecoin.com
-        chart_app_version: 0.0.0-dev
-        chart_version: 0.0.0-dev
-        chart_path: ./chart
+        action: helm-publish
+        chart_repo_username: ${{ secrets.HARBOR_USERNAME }}
+        chart_repo_password: ${{ secrets.HARBOR_PASSWORD }}
+        chart_repo: ${{ env.CHART_REPO }}
+        chart_app_version: ${{ needs.generate-metadata.outputs.tag }}
+        chart_version: ${{ needs.generate-metadata.outputs.tag }}
+        chart_path: .internal-ci/helm/${{ matrix.chart }}
 ```
 
 | with | type | description |
 | --- | --- | --- |
-| `aws_access_key_id` | `string` | AWS Access Key ID for s3 bucket write |
-| `aws_default_region` | `string` | AWS Region for s3 bucket |
-| `aws_secret_access_key` | `string` | AWS Secret Access Key for s3 bucket write |
-| `chart_repo` | `string` | `s3://` Url |
-| `chart_app_version` | `string` | Chart App Version value |
-| `chart_path` | `string` | relative path to chart templates |
-| `chart_version` | `string` | Chart version value |
+| `namespace` | `string` | Namespace in target cluster |
+| `chart_repo_username` | `string` | Harbor user with write access |
+| `chart_repo_password` | `string` | Harbor user with write access |
+| `chart_repo` | `string` | Public Chart Repo Url |
+| `chart_app_version` | `string` | App version |
+| `chart_version` | `string` | Chart version |
+| `chart_path` | `string` | Path to chart files in the repo |
 
 ### namespace-delete
 
@@ -189,12 +186,36 @@ Restart pods by scaling the Deployment/StatefulSet to 0 and back to original sca
 | `rancher_url` | `string` | Rancher Server URL |
 | `rancher_token` | `string` | Rancher API Token |
 
-### pvcs-delete
+### pvc-delete
 
-Delete PersistentVolumeClaims in target namespace/cluster.
+Delete a single PersistentVolumeClaims in target namespace/cluster.
 
 ```yaml
-    - name: Delete PersistentVolumeClaims
+    - name: Delete single PVC
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1.0
+      with:
+        action: pvc-delete
+        namespace: my-namespace
+        object_name: my-pvc-0
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.RANCHER_URL }}
+        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+```
+
+| with | type | description |
+| --- | --- | --- |
+| `namespace` | `string` | Namespace in target cluster |
+| `object_name` | `string` | PVC in target namespace |
+| `rancher_cluster` | `string` | Target cluster name |
+| `rancher_url` | `string` | Rancher Server URL |
+| `rancher_token` | `string` | Rancher API Token |
+
+### pvcs-delete
+
+Delete all PersistentVolumeClaims in target namespace/cluster.
+
+```yaml
+    - name: Delete all PersistentVolumeClaims
       uses: mobilecoinofficial/gha-k8s-toolbox@v1.0
       with:
         action: pvcs-delete
@@ -211,35 +232,57 @@ Delete PersistentVolumeClaims in target namespace/cluster.
 | `rancher_url` | `string` | Rancher Server URL |
 | `rancher_token` | `string` | Rancher API Token |
 
-### sample-keys-create-secrets
+### secrets-create-from-file
 
-Create `sample-keys-seeds` secret in target cluster/namespace.
-
-⚠️ Note: Deletes existing secret before creating.
+Create a k8s secret from a file/directory.  Will delete the existing secret and recreate.
 
 ```yaml
-    - name: Create wallet keys seed secrets
-      uses: mobilecoinofficial/gha-k8s-toolbox@v1.0
+    - name: Create wallet key secrets
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
-        action: sample-keys-create-secrets
-        fog_keys_seed: ${{ steps.seed.outputs.fog_keys_seed }}
-        fog_report_signing_ca_cert: ${{ secrets.FOG_REPORT_SIGNING_CA_CERT }}
-        initial_keys_seed: ${{ steps.seed.outputs.initial_keys_seed }}
-        namespace: my-namespace
+        action: secrets-create-from-file
+        namespace: ${{ inputs.namespace }}
         rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.RANCHER_URL }}
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        object_name: some-secret
+        src: .tmp/some-secret
 ```
 
 | with | type | description |
 | --- | --- | --- |
-| `fog_keys_seed` | `string` | seed value for the Fog Keys |
-| `fog_report_signing_ca_cert` | `string` | CA cert for fog report singing, used in Fog Keys generation |
-| `initial_keys_seed` | `string` | seed value for the Initial Keys |
 | `namespace` | `string` | Namespace in target cluster |
 | `rancher_cluster` | `string` | Target cluster name |
 | `rancher_url` | `string` | Rancher Server URL |
 | `rancher_token` | `string` | Rancher API Token |
+| `object_name` | `string` | K8s object to create |
+| `src` | `string` | File/Directory to make into the secret |
+
+### configmap-create-from-file
+
+Create a k8s configmap from a file/directory.  Will delete existing CM and recreate.
+
+```yaml
+    - name: Create wallet key secrets
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: configmap-create-from-file
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.RANCHER_URL }}
+        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        object_name: some-configmap
+        src: .tmp/some-configmap
+```
+
+| with | type | description |
+| --- | --- | --- |
+| `namespace` | `string` | Namespace in target cluster |
+| `rancher_cluster` | `string` | Target cluster name |
+| `rancher_url` | `string` | Rancher Server URL |
+| `rancher_token` | `string` | Rancher API Token |
+| `object_name` | `string` | K8s object to create |
+| `src` | `string` | File/Directory to make into the configmap |
 
 
 ### toolbox-copy

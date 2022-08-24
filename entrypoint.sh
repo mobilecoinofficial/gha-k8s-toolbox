@@ -98,6 +98,14 @@ helm_upgrade_with_values()
     error_exit "Helm Deployment Failed"
 }
 
+toolbox_cmd()
+{
+    pod="${1}"
+    command="${2}"
+
+    k exec -n "${INPUT_NAMESPACE}" "${pod}" -c toolbox -- /bin/bash -c "${command}"
+}
+
 if [ -n "${INPUT_ACTION}" ]
 then
     case "${INPUT_ACTION}" in
@@ -109,6 +117,8 @@ then
             is_set INPUT_INGEST_COLOR
 
             declare -A peer_keys
+            active_found="no"
+            retired="no"
 
             if [ "${INPUT_INGEST_COLOR}" == "blue" ]
             then
@@ -140,7 +150,7 @@ then
                 do
                     echo "--- checking insecure-fog-ingest://${p}:3226"
                     command="RUST_LOG=error fog_ingest_client --uri 'insecure-fog-ingest://${p}:3226' get-status"
-                    result=$(k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -c toolbox -- /bin/bash -c "${command}")
+                    result=$(toolbox_cmd "${toolbox}" "${command}")
                     echo "${result}" | jq -r .
                     mode=$(echo "${result}" | jq -r .mode)
 
@@ -148,8 +158,9 @@ then
                     then
                         echo "-- ${p} Active ingest found, retiring."
                         command="RUST_LOG=error fog_ingest_client --uri 'insecure-fog-ingest://${p}:3226' retire | jq -r ."
-                        k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -c toolbox -- /bin/bash -c "${command}"
+                        toolbox_cmd "${toolbox}" "${command}"
                         active_found="yes"
+                        retired="yes"
                     fi
                 done
 
@@ -166,7 +177,7 @@ then
             do
                 echo "--- checking insecure-fog-ingest://${p}:3226"
                 command="RUST_LOG=error fog_ingest_client --uri 'insecure-fog-ingest://${p}:3226' get-status"
-                result=$(k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -c toolbox -- /bin/bash -c "${command}")
+                result=$(toolbox_cmd "${toolbox}" "${command}")
                 echo "${result}" | jq -r .
                 mode=$(echo "${result}" | jq -r .mode)
                 peer_keys[${p}]=$(echo "${result}" | jq -r .ingress_pubkey)
@@ -182,13 +193,13 @@ then
 
             # does fog_ingest_client have get-ingress-public-key-records
             command="fog_ingest_client --help | grep get-ingress-public-key-records"
-            if k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -c toolbox -- /bin/bash -c "${command}"
+            if toolbox_cmd "${toolbox}" "${command}"
             then
-
                 echo "-- checking for existing key records"
                 command="RUST_LOG=error fog_ingest_client --uri 'insecure-fog-ingest://${instance}-0.${instance}:3226' get-ingress-public-key-records"
-                result=$(k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -c toolbox -- /bin/bash -c "${command}")
+                result=$(toolbox_cmd "${toolbox}" "${command}")
                 echo "${result}"
+
                 key_records=$(echo "${result}" | jq -r '.[] | .ingress_public_key')
 
                 if [[ -n "${key_records}" ]]
@@ -203,7 +214,7 @@ then
                             then
                                 echo "-- Found active key on ${peer} - activating now."
                                 command="RUST_LOG=error fog_ingest_client --uri 'insecure-fog-ingest://${peer}:3226' activate | jq -r ."
-                                k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -c toolbox -- /bin/bash -c "${command}"
+                                toolbox_cmd "${toolbox}" "${command}"
 
                                 exit 0
                             fi
@@ -220,7 +231,42 @@ then
 
             echo "-- No Active Primary ingest found. Activating ingest 0."
             command="RUST_LOG=error fog_ingest_client --uri 'insecure-fog-ingest://${instance}-0.${instance}:3226' activate | jq -r ."
-            k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -c toolbox -- /bin/bash -c "${command}"
+            toolbox_cmd "${toolbox}" "${command}"
+
+
+            if [[ "${retired}" == "yes" ]]
+            then
+                echo "-- Progress block chain to finish ${flipside} retirement"
+                # what do we need at this point?
+                # if we made it here we have already run fog-distribution
+                # generate keys
+                #
+                # fog-test-client
+                echo "  -- Generate keys from seeds"
+                command="INITIALIZE_LEDGER='true' FOG_REPORT_URL='fog://fog.${INPUT_NAMESPACE}.development.mobilecoin.com:443' /util/generate_origin_data.sh"
+                toolbox_cmd "${toolbox}" "${command}"
+
+                echo "  -- Use Fog test_client to generate blocks to finish retire of ${flipside}"
+                command="RUST_LOG=info /test/fog-test-client.sh --key-dir /tmp/sample_data/fog_keys --token-id 0"
+                toolbox_cmd "${toolbox}" "${command}"
+
+                # check active/retired status, if both nodes are not idle we error out.
+                echo "  -- Check ingest status to see if we made it to retired"
+                for p in "${flipside_peers[@]}"
+                do
+                    echo "  -- checking insecure-fog-ingest://${p}:3226"
+                    command="RUST_LOG=error fog_ingest_client --uri 'insecure-fog-ingest://${p}:3226' get-status"
+                    result=$(toolbox_cmd "${toolbox}" "${command}")
+                    echo "${result}" | jq -r .
+                    mode=$(echo "${result}" | jq -r .mode)
+                    if [[ "${mode}" == "Active" ]]
+                    then
+                        echo "-- ERROR: Oh No, ${p} is still Active, this node should have transitioned to Idle"
+                        exit 1
+                    fi
+                done
+                echo "-- ${flipside} ingest successfully retired"
+            fi
             ;;
 
         helm-deploy)
@@ -329,59 +375,6 @@ then
             helm cm-push --force ".tmp/charts/${chart_name}-${INPUT_CHART_VERSION}.tgz" repo
             ;;
 
-        helm-s3-publish)
-            # Publish a helm chart to an S3 bucket
-            is_set INPUT_CHART_APP_VERSION
-            is_set INPUT_CHART_PATH
-            is_set INPUT_CHART_VERSION
-            is_set INPUT_AWS_ACCESS_KEY_ID
-            is_set INPUT_AWS_DEFAULT_REGION
-            is_set INPUT_AWS_SECRET_ACCESS_KEY
-            is_set INPUT_CHART_REPO
-
-            # Convert input to AWS env vars.
-            export AWS_ACCESS_KEY_ID="${INPUT_AWS_ACCESS_KEY_ID}"
-            export AWS_DEFAULT_REGION="${INPUT_AWS_DEFAULT_REGION}"
-            export AWS_SECRET_ACCESS_KEY="${INPUT_AWS_SECRET_ACCESS_KEY}"
-
-            if [ "${INPUT_CHART_SIGN}" == "true" ]
-            then
-                is_set INPUT_CHART_PGP_KEYRING_PATH
-                is_set INPUT_CHART_PGP_KEY_NAME
-            fi
-
-            echo "-- Create chart tmp dir - .tmp/charts"
-            mkdir -p ".tmp/charts"
-
-            echo "-- Updating chart dependencies"
-            helm dependency update "${INPUT_CHART_PATH}"
-
-            if [ "${INPUT_CHART_SIGN}" == "true" ]
-            then
-                echo "-- Package and sign chart with provided pgp key"
-                helm package "${INPUT_CHART_PATH}" \
-                    -d ".tmp/charts" \
-                    --app-version="${CHART_APP_VERSION}" \
-                    --version="${INPUT_CHART_VERSION}" \
-                    --sign \
-                    --keyring="${INPUT_CHART_PGP_KEYRING_PATH}" \
-                    --key="${INPUT_CHART_PGP_KEY}"
-            else
-                echo "-- Package unsigned chart"
-                helm package "${INPUT_CHART_PATH}" \
-                    -d ".tmp/charts" \
-                    --app-version="${INPUT_CHART_APP_VERSION}" \
-                    --version="${INPUT_CHART_VERSION}"
-            fi
-
-            echo "-- Add chart repo ${INPUT_CHART_REPO}"
-            helm repo add repo "${INPUT_CHART_REPO}"
-
-            echo "-- Push chart"
-            chart_name=$(basename "${INPUT_CHART_PATH}")
-            helm s3 push --relative --force ".tmp/charts/${chart_name}-${INPUT_CHART_VERSION}.tgz" repo
-            ;;
-
         namespace-delete)
             # Delete namespace in target cluster.
             rancher_get_kubeconfig
@@ -466,6 +459,16 @@ then
             done
             ;;
 
+        pvc-delete)
+            # Delete a specific PVC
+            rancher_get_kubeconfig
+            is_set INPUT_NAMESPACE
+            is_set INPUT_OBJECT_NAME
+
+            echo "-- Delete PVC ${INPUT_OBJECT_NAME}"
+            k delete pvc "${INPUT_OBJECT_NAME}" -n "${INPUT_NAMESPACE}" --now --wait --request-timeout=5m --ignore-not-found
+            ;;
+
         secrets-create-from-file)
             # Create a secret from file or all files in a directory
             rancher_get_kubeconfig
@@ -526,7 +529,7 @@ then
             echo "-- execute command:"
             echo "   ${INPUT_COMMAND}"
             echo ""
-            k exec -n "${INPUT_NAMESPACE}" "${toolbox}" -c toolbox -- /bin/bash -c "${INPUT_COMMAND}"
+            toolbox_cmd "${INPUT_NAMESPACE}" "${toolbox}" "${INPUT_COMMAND}"
             ;;
         kubectl-exec)
 	    # setup kubeconfig and execute supplied command

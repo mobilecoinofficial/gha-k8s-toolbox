@@ -1,5 +1,5 @@
 # Copyright (c) 2022 MobileCoin Inc.
-FROM alpine/helm:3.8.2
+FROM alpine/helm:3.9.3
 
 ENV HELM_CONFIG_HOME=/opt/helm
 ENV HELM_REGISTRY_CONFIG=/opt/helm/registry.json
@@ -12,7 +12,6 @@ ENV HELM_PLUGINS=/opt/helm/plugins
 RUN  apk add --no-cache bash curl jq \
   && apk add --no-cache -X http://dl-cdn.alpinelinux.org/alpine/edge/testing kubectl \
   && mkdir -p /opt/helm/plugins \
-  && helm plugin install https://github.com/hypnoglow/helm-s3.git \
   && helm plugin install https://github.com/chartmuseum/helm-push
 
 COPY entrypoint.sh /entrypoint.sh
