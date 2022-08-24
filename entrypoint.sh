@@ -529,7 +529,7 @@ then
             echo "-- execute command:"
             echo "   ${INPUT_COMMAND}"
             echo ""
-            toolbox_cmd "${INPUT_NAMESPACE}" "${toolbox}" "${INPUT_COMMAND}"
+            toolbox_cmd "${toolbox}" "${INPUT_COMMAND}"
             ;;
         kubectl-exec)
 	    # setup kubeconfig and execute supplied command
