@@ -248,6 +248,7 @@ then
 
                 echo "  -- Use Fog test_client to generate blocks to finish retire of ${flipside}"
                 command="RUST_LOG=info /test/fog-test-client.sh --key-dir /tmp/sample_data/fog_keys --token-id 0"
+                toolbox_cmd "${toolbox}" "${command}"
 
                 # check active/retired status, if both nodes are not idle we error out.
                 echo "  -- Check ingest status to see if we made it to retired"
