@@ -459,6 +459,16 @@ then
             done
             ;;
 
+        pvc-delete)
+            # Delete a specific PVC
+            rancher_get_kubeconfig
+            is_set INPUT_NAMESPACE
+            is_set INPUT_OBJECT_NAME
+
+            echo "-- Delete PVC ${INPUT_OBJECT_NAME}"
+            k delete pvc "${INPUT_OBJECT_NAME}" -n "${INPUT_NAMESPACE}" --now --wait --request-timeout=5m --ignore-not-found
+            ;;
+
         secrets-create-from-file)
             # Create a secret from file or all files in a directory
             rancher_get_kubeconfig

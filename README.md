@@ -186,12 +186,36 @@ Restart pods by scaling the Deployment/StatefulSet to 0 and back to original sca
 | `rancher_url` | `string` | Rancher Server URL |
 | `rancher_token` | `string` | Rancher API Token |
 
-### pvcs-delete
+### pvc-delete
 
-Delete PersistentVolumeClaims in target namespace/cluster.
+Delete a single PersistentVolumeClaims in target namespace/cluster.
 
 ```yaml
-    - name: Delete PersistentVolumeClaims
+    - name: Delete single PVC
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1.0
+      with:
+        action: pvc-delete
+        namespace: my-namespace
+        object_name: my-pvc-0
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.RANCHER_URL }}
+        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+```
+
+| with | type | description |
+| --- | --- | --- |
+| `namespace` | `string` | Namespace in target cluster |
+| `object_name` | `string` | PVC in target namespace |
+| `rancher_cluster` | `string` | Target cluster name |
+| `rancher_url` | `string` | Rancher Server URL |
+| `rancher_token` | `string` | Rancher API Token |
+
+### pvcs-delete
+
+Delete all PersistentVolumeClaims in target namespace/cluster.
+
+```yaml
+    - name: Delete all PersistentVolumeClaims
       uses: mobilecoinofficial/gha-k8s-toolbox@v1.0
       with:
         action: pvcs-delete
