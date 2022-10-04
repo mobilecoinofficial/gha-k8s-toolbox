@@ -40,6 +40,9 @@ inputs:
   command:
     description: "shell commands to run"
     required: false
+  debug:
+    description: Enable debug logging
+    required: false
   dst:
     description: "File destination to copy into toolbox"
     required: false
@@ -65,14 +68,14 @@ inputs:
     description: "rancher project"
     required: false
     default: "default"
+  rancher_cluster:
+    description: "Rancher K8s Cluster"
+    required: false
   rancher_token:
     description: "Rancher Auth Token"
     required: false
   rancher_url:
     description: "Rancher management url"
-    required: false
-  rancher_cluster:
-    description: "Rancher K8s Cluster"
     required: false
   release_name:
     description: "helm release name"

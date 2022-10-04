@@ -1,6 +1,8 @@
 #!/bin/bash
 # Copyright (c) 2022 MobileCoin Inc.
 
+[[ "$INPUT_DEBUG" == 'true' ]] && set -x
+
 set -o errexit
 set -o pipefail
 shopt -s expand_aliases
