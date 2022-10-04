@@ -41,7 +41,7 @@ inputs:
     description: "shell commands to run"
     required: false
   debug:
-    description: Enable debug logging
+    description: Debug script execution
     required: false
   dst:
     description: "File destination to copy into toolbox"
