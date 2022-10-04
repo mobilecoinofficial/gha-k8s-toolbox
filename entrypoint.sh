@@ -2,6 +2,7 @@
 # Copyright (c) 2022 MobileCoin Inc.
 
 if [[ "$INPUT_DEBUG" == 'true' ]]; then
+    echo "debugging..."
     set -x
 fi
 
