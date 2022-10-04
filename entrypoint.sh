@@ -1,7 +1,9 @@
 #!/bin/bash
 # Copyright (c) 2022 MobileCoin Inc.
 
-[[ "$INPUT_DEBUG" == 'true' ]] && set -x
+if [[ "$INPUT_DEBUG" == 'true' ]]; then
+    set -x
+fi
 
 set -o errexit
 set -o pipefail
