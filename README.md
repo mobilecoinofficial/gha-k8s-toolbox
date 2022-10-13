@@ -232,15 +232,17 @@ Delete all PersistentVolumeClaims in target namespace/cluster.
 | `rancher_url` | `string` | Rancher Server URL |
 | `rancher_token` | `string` | Rancher API Token |
 
-### secrets-create-from-file
+### `create-secret-from-file`
 
 Create a k8s secret from a file/directory.  Will delete the existing secret and recreate.
 
+Legacy name: `secrets-create-from-file`
+
 ```yaml
-    - name: Create wallet key secrets
+    - name: Create wallet key secret
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
-        action: secrets-create-from-file
+        action: create-secret-from-file
         namespace: ${{ inputs.namespace }}
         rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.RANCHER_URL }}
@@ -258,15 +260,17 @@ Create a k8s secret from a file/directory.  Will delete the existing secret and 
 | `object_name` | `string` | K8s object to create |
 | `src` | `string` | File/Directory to make into the secret |
 
-### configmap-create-from-file
+### `create-configmap-from-file`
 
-Create a k8s configmap from a file/directory.  Will delete existing CM and recreate.
+Create a k8s ConfigMap from a file/directory.  Will delete existing CM and recreate.
+
+Legacy name: `configmap-create-from-file`
 
 ```yaml
-    - name: Create wallet key secrets
+    - name: Create config
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
-        action: configmap-create-from-file
+        action: create-configmap-from-file
         namespace: ${{ inputs.namespace }}
         rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
         rancher_url: ${{ secrets.RANCHER_URL }}
@@ -278,12 +282,64 @@ Create a k8s configmap from a file/directory.  Will delete existing CM and recre
 | with | type | description |
 | --- | --- | --- |
 | `namespace` | `string` | Namespace in target cluster |
+| `object_name` | `string` | K8s object to create |
+| `src` | `string` | File/Directory to make into the configmap |
 | `rancher_cluster` | `string` | Target cluster name |
 | `rancher_url` | `string` | Rancher Server URL |
 | `rancher_token` | `string` | Rancher API Token |
-| `object_name` | `string` | K8s object to create |
-| `src` | `string` | File/Directory to make into the configmap |
 
+### `create-secret-from-values`
+
+Create a k8s Secret from given values.  Will delete the existing Secret and recreate.
+
+```yaml
+    - name: Create auth secret
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: create-secret-from-values
+        namespace: ${{ inputs.namespace }}
+        object_name: some-secret
+        src:
+          FOO: bar
+          BAR: baz
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        rancher_url: ${{ secrets.RANCHER_URL }}
+```
+
+| with | type | description |
+| --- | --- | --- |
+| `namespace` | `string` | Namespace in target cluster |
+| `object_name` | `string` | K8s object to create |
+| `src` | `string` | YAML map containing key-value pairs |
+
+### create-configmap-from-values
+
+Create a k8s ConfigMap from given values.  Will delete existing CM and recreate.
+
+```yaml
+    - name: Create config
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: configmap-create-from-values
+        namespace: ${{ inputs.namespace }}
+        object_name: some-configmap
+        src:
+          FOO: bar
+          BAR: baz
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        rancher_url: ${{ secrets.RANCHER_URL }}
+```
+
+| with | type | description |
+| --- | --- | --- |
+| `namespace` | `string` | Namespace in target cluster |
+| `object_name` | `string` | K8s object to create |
+| `src` | `string` | YAML map containing key-value pairs |
+| `rancher_cluster` | `string` | Target cluster name |
+| `rancher_token` | `string` | Rancher API Token |
+| `rancher_url` | `string` | Rancher Server URL |
 
 ### toolbox-copy
 

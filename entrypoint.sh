@@ -98,12 +98,49 @@ helm_upgrade_with_values()
     error_exit "Helm Deployment Failed"
 }
 
+recreate_configmap()
+{
+    is_set INPUT_NAMESPACE
+    is_set INPUT_OBJECT_NAME
+
+    k delete configmap "${INPUT_OBJECT_NAME}" -n "${INPUT_NAMESPACE}" --now --wait --request-timeout=5m --ignore-not-found
+
+    k create configmap "${INPUT_OBJECT_NAME}" -n "${INPUT_NAMESPACE}" "$@"
+}
+
+recreate_secret()
+{
+    is_set INPUT_NAMESPACE
+    is_set INPUT_OBJECT_NAME
+    k delete secret "${INPUT_OBJECT_NAME}" -n "${INPUT_NAMESPACE}" --now --wait --request-timeout=5m --ignore-not-found
+    k create secret generic "${INPUT_OBJECT_NAME}" -n "${INPUT_NAMESPACE}" "$@"
+}
+
 toolbox_cmd()
 {
     pod="${1}"
     command="${2}"
 
     k exec -n "${INPUT_NAMESPACE}" "${pod}" -c toolbox -- /bin/bash -c "${command}"
+}
+
+parse_yaml_map()
+{
+    # via https://stackoverflow.com/a/21189044
+    local prefix=$2
+    local s='[[:space:]]*' w='[a-zA-Z0-9_]*' fs=$(echo @|tr @ '\034')
+    sed -ne "s|^\($s\):|\1|" \
+         -e "s|^\($s\)\($w\)$s:$s[\"']\(.*\)[\"']$s\$|\1$fs\2$fs\3|p" \
+         -e "s|^\($s\)\($w\)$s:$s\(.*\)$s\$|\1$fs\2$fs\3|p" <<< "$1" |
+    awk -F$fs '{
+        indent = length($1)/2;
+        vname[indent] = $2;
+        for (i in vname) {if (i > indent) {delete vname[i]}}
+        if (length($3) > 0) {
+            vn=""; for (i=0; i<indent; i++) {vn=(vn)(vname[i])("_")}
+            printf("%s%s%s=\"%s\"\n", "'$prefix'",vn, $2, $3);
+        }
+    }'
 }
 
 if [ -n "${INPUT_ACTION}" ]
@@ -469,30 +506,32 @@ then
             k delete pvc "${INPUT_OBJECT_NAME}" -n "${INPUT_NAMESPACE}" --now --wait --request-timeout=5m --ignore-not-found
             ;;
 
-        secrets-create-from-file)
+        create-configmap-from-file | configmap-create-from-file)
             # Create a secret from file or all files in a directory
             rancher_get_kubeconfig
-            is_set INPUT_NAMESPACE
-            is_set INPUT_SRC
-            is_set INPUT_OBJECT_NAME
-
-            k delete secret "${INPUT_OBJECT_NAME}" -n "${INPUT_NAMESPACE}" --now --wait --request-timeout=5m --ignore-not-found
-
-            k create secret generic "${INPUT_OBJECT_NAME}" -n "${INPUT_NAMESPACE}" \
-                --from-file="${INPUT_SRC}"
+	    is_set INPUT_SRC
+	    recreate_configmap $(parse_yaml_map "${INPUT_SRC}" "--from-file=")
             ;;
 
-        configmap-create-from-file)
+        create-configmap-from-values)
+            # Create a ConfigMap from the given src
+            rancher_get_kubeconfig
+	    is_set INPUT_SRC
+	    recreate_configmap $(parse_yaml_map "${INPUT_SRC}" "--from-literal=")
+            ;;
+
+        create-secret-from-file | secrets-create-from-file)
             # Create a secret from file or all files in a directory
             rancher_get_kubeconfig
-            is_set INPUT_NAMESPACE
-            is_set INPUT_SRC
-            is_set INPUT_OBJECT_NAME
+	    is_set INPUT_SRC
+	    recreate_secret $(parse_yaml_map "${INPUT_SRC}" "--from-file=")
+            ;;
 
-            k delete configmap "${INPUT_OBJECT_NAME}" -n "${INPUT_NAMESPACE}" --now --wait --request-timeout=5m --ignore-not-found
-
-            k create configmap "${INPUT_OBJECT_NAME}" -n "${INPUT_NAMESPACE}" \
-                --from-file="${INPUT_SRC}"
+        create-secret-from-values)
+            # Create a secret from the given src
+            rancher_get_kubeconfig
+	    is_set INPUT_SRC
+	    recreate_secret $(parse_yaml_map "${INPUT_SRC}" "--from-literal=")
             ;;
 
         toolbox-copy)

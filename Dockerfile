@@ -10,7 +10,7 @@ ENV HELM_DATA_HOME=/opt/helm/data
 ENV HELM_PLUGINS=/opt/helm/plugins
 
 RUN  apk add --no-cache bash curl jq \
-  && apk add --no-cache -X http://dl-cdn.alpinelinux.org/alpine/edge/testing kubectl \
+  && apk add --no-cache -X http://dl-cdn.alpinelinux.org/alpine/edge/testing kubectl yq \
   && mkdir -p /opt/helm/plugins \
   && helm plugin install https://github.com/chartmuseum/helm-push
 
