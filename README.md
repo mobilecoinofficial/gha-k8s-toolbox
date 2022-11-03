@@ -6,6 +6,25 @@ This is a bit of a dumping ground for scripts and automation around interacting 
 
 ## Functions (`with.action:`)
 
+### `generate-metadata`
+
+Generate metadata from `env.GITHUB_*`
+
+```yaml
+    - name: Generate metadata
+      id: metadata
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: generate-metadata
+```
+
+Outputs:
+* `namespace`: k8s namespace derived from branch name
+* `version`: base version
+* `sha`: formatted commit SHA
+* `tag`: Unique artifact tag. Use this to reference the Docker image
+* `docker_tag`: Tags for the Docker image, in [docker/metadata-action syntax](https://github.com/docker/metadata-action#tags-input)
+
 ### fog-ingest-activate
 
 Find toolbox pod and activate defined blue/green fog-ingest and retire the "flipside" fog-ingest (if exists).
