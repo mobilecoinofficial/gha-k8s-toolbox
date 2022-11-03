@@ -246,8 +246,8 @@ then
                 command="INITIALIZE_LEDGER='true' FOG_REPORT_URL='fog://fog.${INPUT_NAMESPACE}.development.mobilecoin.com:443' /util/generate_origin_data.sh"
                 toolbox_cmd "${toolbox}" "${command}"
 
-                echo "  -- Use Fog test_client to generate blocks to finish retire of ${flipside}"
-                command="RUST_LOG=info /test/fog-test-client.sh --key-dir /tmp/sample_data/fog_keys --token-id 0"
+                echo "  -- Use mobilecoind to generate blocks to finish retire of ${flipside}"
+                command="/test/mobilecoind-integration-test.sh"
                 toolbox_cmd "${toolbox}" "${command}"
 
                 # check active/retired status, if both nodes are not idle we error out.

@@ -4,7 +4,10 @@ name: tag
 on:
   push:
     branches:
-      - main
+    - main
+  # Refresh images on the first of every month for OS security updates.
+  schedule:
+  - cron: '0 0 1 * *'
 
 jobs:
   tag:
