@@ -392,7 +392,13 @@ then
 
             echo "-- Create namespace ${INPUT_NAMESPACE}"
             # Don't sweat it if the namespace already exists.
-            k create ns "${INPUT_NAMESPACE}" || echo "Namespace already exists"
+            if k create ns "${INPUT_NAMESPACE}"
+            then
+                echo "Namespace created"
+            else
+                echo "Namespace already exists"
+                exit 0
+            fi
 
             auth_header="Authorization: Bearer ${INPUT_RANCHER_TOKEN}"
 
