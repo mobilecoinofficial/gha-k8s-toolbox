@@ -84,7 +84,7 @@ runs:
   using: docker
   # Switch image to Dockerfile and push to a branch for testing changes.
   # Don't forget to switch back for the PR to release.
-  # image: Dockerfile
-  image: docker://mobilecoin/gha-k8s-toolbox:v1
+  image: Dockerfile
+  # image: docker://mobilecoin/gha-k8s-toolbox:v1
   args:
   - ${{ inputs.command }}

@@ -51,6 +51,28 @@ rancher_get_kubeconfig()
     chmod 600 "${KUBECONFIG}"
 }
 
+rancher_clean_up_tokens()
+{
+    is_set INPUT_RANCHER_URL
+    is_set INPUT_RANCHER_TOKEN
+    is_set INPUT_RANCHER_CLUSTER
+
+    echo "-- Get kubeconfig tokens older than 1 day for Rancher User"
+    auth_header="Authorization: Bearer ${INPUT_RANCHER_TOKEN}"
+    tokens=$(curl --retry 5 -sSLf -H "${auth_header}" "${INPUT_RANCHER_URL}/v3/tokens")
+    old_tokens=$(echo "${tokens}" | jq -r '.data[] | select(.labels."authn.management.cattle.io/kind" == "kubeconfig") | select(.created < (now - 86400 | todate).links.remove)')
+
+    for t in ${old_tokens}
+    do
+        token_id=$(basename "${t}")
+        echo "Removing old token ${token_id}"
+        curl -sLf -H  \
+            -X DELETE \
+            -H 'Accept: application/json'\
+            "${t}"
+    done
+}
+
 helm_upgrade()
 {
     repo_name="${1}"
@@ -546,6 +568,8 @@ then
             error_exit "Command ${INPUT_ACTION} not recognized"
             ;;
     esac
+    # Clean up old tokens.
+    rancher_clean_up_tokens
 else
     # Run arbitrary commands
     exec "$@"
