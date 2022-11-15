@@ -569,7 +569,7 @@ then
             ;;
     esac
     # Clean up old tokens.
-    rancher_clean_up_tokens
+    # rancher_clean_up_tokens
 else
     # Run arbitrary commands
     exec "$@"
