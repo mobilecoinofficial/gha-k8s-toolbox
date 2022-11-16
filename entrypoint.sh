@@ -11,6 +11,8 @@ touch "${KUBECONFIG}"
 chmod 600 "${KUBECONFIG}"
 alias k="kubectl --cache-dir /opt/.kube/cache"
 
+# Echo a message and exit with an error
+#  1: string to echo to stdout
 error_exit()
 {
     msg="${1}"
@@ -19,6 +21,8 @@ error_exit()
     exit 1
 }
 
+# Echo a message and exit
+#  1: string to echo
 echo_exit()
 {
     msg="${1}"
@@ -27,6 +31,20 @@ echo_exit()
     exit 0
 }
 
+# Echo a debug message if runner debug is set
+#  1: string to echo
+echo_debug()
+{
+    msg="${1}"
+
+    if [ -n "${RUNNER_DEBUG}" ]
+    then
+        echo "::debug::${msg}"
+    fi
+}
+
+# Check to see if a variable has a value
+#  1: Variable name
 is_set()
 {
     var_name="${1}"
@@ -34,6 +52,46 @@ is_set()
     if [ -z "${!var_name}" ]; then
         error_exit "${var_name} is not set."
     fi
+}
+
+# Add commands for clean up on exit
+#  1: additional commands to run on exit.
+add_trap()
+{
+    add_cmd="${1}"
+    existing_cmd=$(trap -p EXIT | awk -F "'" '{print $2}')
+    new_cmd="${add_cmd};${existing_cmd}"
+
+    echo_debug "## Adding trap for EXIT"
+    echo_debug "   Existing Command ${existing_cmd}"
+    echo_debug "   Additional Command ${add_cmd}"
+    echo_debug "   New Command ${new_cmd}"
+
+    # shellcheck disable=SC2064 # Assign trap, and yes we want to expand now.
+    trap "${new_cmd}" EXIT
+}
+
+rancher_clean_up_tokens()
+{
+    is_set INPUT_RANCHER_URL
+    is_set INPUT_RANCHER_TOKEN
+    is_set INPUT_RANCHER_CLUSTER
+
+    echo "-- Clean up kubeconfig tokens older than 1 day for Rancher User"
+    auth_header="Authorization: Bearer ${INPUT_RANCHER_TOKEN}"
+    tokens=$(curl --retry 5 -sSLf -H "${auth_header}" "${INPUT_RANCHER_URL}/v3/tokens")
+
+    old_tokens=$(echo "${tokens}" | jq -r '.data[] | select(.labels."authn.management.cattle.io/kind" == "kubeconfig") | select(.created < (now - 86400 | todate).links.remove)')
+
+    for t in ${old_tokens}
+    do
+        token_id=$(basename "${t}")
+        echo_debug "Removing old token ${token_id}"
+        curl -sLf -H  \
+            -X DELETE \
+            -H 'Accept: application/json'\
+            "${t}"
+    done
 }
 
 rancher_get_kubeconfig()
@@ -46,32 +104,20 @@ rancher_get_kubeconfig()
     auth_header="Authorization: Bearer ${INPUT_RANCHER_TOKEN}"
     kubeconfig_url=$(curl --retry 5 -sSLf -H "${auth_header}" "${INPUT_RANCHER_URL}/v3/clusters/?name=${INPUT_RANCHER_CLUSTER}" | jq -r .data[0].actions.generateKubeconfig)
 
+    if [[ "${kubeconfig_url}" == "null" ]]
+    then
+        echo "-- Failed to get kubeconfig url, auth invalid or cluster not found"
+        exit 1
+    fi
+
     echo "-- Write kubeconfig"
     curl --retry 5 -sSLf -H "${auth_header}" -X POST "${kubeconfig_url}" | jq -r .config > "${KUBECONFIG}"
     chmod 600 "${KUBECONFIG}"
+
+    # add cleanup task
+    add_trap rancher_clean_up_tokens
 }
 
-rancher_clean_up_tokens()
-{
-    is_set INPUT_RANCHER_URL
-    is_set INPUT_RANCHER_TOKEN
-    is_set INPUT_RANCHER_CLUSTER
-
-    echo "-- Get kubeconfig tokens older than 1 day for Rancher User"
-    auth_header="Authorization: Bearer ${INPUT_RANCHER_TOKEN}"
-    tokens=$(curl --retry 5 -sSLf -H "${auth_header}" "${INPUT_RANCHER_URL}/v3/tokens")
-    old_tokens=$(echo "${tokens}" | jq -r '.data[] | select(.labels."authn.management.cattle.io/kind" == "kubeconfig") | select(.created < (now - 86400 | todate).links.remove)')
-
-    for t in ${old_tokens}
-    do
-        token_id=$(basename "${t}")
-        echo "Removing old token ${token_id}"
-        curl -sLf -H  \
-            -X DELETE \
-            -H 'Accept: application/json'\
-            "${t}"
-    done
-}
 
 helm_upgrade()
 {
