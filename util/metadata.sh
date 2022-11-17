@@ -1,10 +1,9 @@
 #!/bin/bash
 # Copyright (c) 2018-2022 The MobileCoin Foundation
 #
-# Generate metadata for GitHub Actions workflows.
-#
+# Generate metadata for dev deploy workflows.
 
-set -e
+set -eu
 
 export TMPDIR=".tmp"
 
@@ -12,7 +11,7 @@ is_set()
 {
   var_name="${1}"
 
-  if [ -z "${!var_name}" ]; then
+  if [[ -z "${!var_name}" ]]; then
     echo "${var_name} is not set." >&2
     exit 1
   fi
@@ -25,7 +24,7 @@ normalize_ref_name()
     echo "${name}" | sed -E 's/(feature|release)\///' | sed -e 's/[._/]/-/g'
 }
 
-# check for github reference variables.
+# Check for github reference variables.
 is_set GITHUB_REF_NAME
 is_set GITHUB_REF_TYPE
 is_set GITHUB_RUN_NUMBER
@@ -40,13 +39,13 @@ sha="sha-${GITHUB_SHA:0:8}"
 branch="${GITHUB_REF_NAME}"
 
 # Override branch name with head when event is a PR
-if [[ -n "${GITHUB_HEAD_REF}" ]]
+if [[ -n "${GITHUB_HEAD_REF:-}" ]]
 then
     branch="${GITHUB_HEAD_REF}"
 fi
 
 # Override branch with delete ref if set.
-if [[ -n "${DELETE_REF_NAME}" ]]
+if [[ -n "${DELETE_REF_NAME:-}" ]]
 then
     branch="${DELETE_REF_NAME}"
 fi
@@ -81,10 +80,6 @@ EOF
 
         normalized_tag=$(normalize_ref_name "${tag}")
         namespace="${namespace_prefix}-${normalized_tag}"
-
-        # just make sure we have these set to avoid weird edge cases.
-        is_set tag
-        is_set docker_tag
     ;;
     # Branches and pull requests will set type as branch.
     # Don't filter on "valid" branches, rely on workflows to filter out their accepted events.
