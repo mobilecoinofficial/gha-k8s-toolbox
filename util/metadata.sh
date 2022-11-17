@@ -54,7 +54,7 @@ case "${GITHUB_REF_TYPE}" in
     tag)
         # check for valid tag and set outputs
         version="${GITHUB_REF_NAME}"
-        if [[ ! "${version}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+.* ]]
+        if [[ ! "${version}" =~ ^v[0-9]+(\.[0-9]+)*.* ]]
         then
             echo "GitHub Tag ${version} is not valid semver."
             exit 1
