@@ -109,6 +109,10 @@ toolbox_cmd()
 if [ -n "${INPUT_ACTION}" ]
 then
     case "${INPUT_ACTION}" in
+	generate-metadata)
+		./util/metadata.sh
+            ;;
+
         fog-ingest-activate)
             # CBB: we do a lot of copy pasta for "standard" commands, we should make functions.
             # Activate target blue/green fog-ingest. Retire flipside ingest if it exists.

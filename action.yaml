@@ -80,6 +80,9 @@ inputs:
   src:
     description: "File to copy into toolbox"
     required: false
+  prefix:
+    description: "Optional override of prefix. Defaults to the basename of the repository."
+    required: false
 runs:
   using: docker
   # Switch image to Dockerfile and push to a branch for testing changes.

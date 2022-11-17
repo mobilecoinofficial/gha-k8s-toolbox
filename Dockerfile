@@ -16,6 +16,7 @@ RUN  apk add --no-cache \
   && helm plugin install https://github.com/chartmuseum/helm-push
 
 COPY entrypoint.sh /entrypoint.sh
+COPY util /util
 
 ENTRYPOINT ["/entrypoint.sh"]
 
