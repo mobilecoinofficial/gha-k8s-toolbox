@@ -19,9 +19,13 @@ is_set()
 
 normalize_ref_name()
 {
-    name="${1}"
+    # Remove prefix, convert delimiters to dashes, and strip trailing dashes.
+    echo "${1}" | sed -Ee 's!^(feature|release)/!!' | sed -e 's![._/]!-!g' | sed -e 's!-*$!!'
+}
 
-    echo "${name}" | sed -E 's/(feature|release)\///' | sed -e 's/[._/]/-/g'
+base_prefix()
+{
+    basename "${GITHUB_REPOSITORY:-$PWD}"
 }
 
 # Check for github reference variables.
@@ -31,8 +35,16 @@ is_set GITHUB_RUN_NUMBER
 is_set GITHUB_SHA
 is_set GITHUB_OUTPUT
 
-# Make sure prefix is less that 18 characters or k8s limits.
-namespace_prefix="mc"
+# OK if INPUT_PREFIX and GITHUB_REPOSITORY are unset.
+namespace_prefix="$(normalize_ref_name ${INPUT_PREFIX:-$(base_prefix)})"
+namespace_prefix="${namespace_prefix:-mc}"
+# Make sure prefix is no longer than 10 chars, to leave room
+# in the 63-char limit on k8s namespaces.
+if [[ ${#namespace_prefix} -gt 10 ]]
+then
+    namespace_prefix="${namespace_prefix:0:10}"
+fi
+
 sha="sha-${GITHUB_SHA:0:8}"
 
 # Set branch name. Where we get this ref is different for branch, pull_request or delete event

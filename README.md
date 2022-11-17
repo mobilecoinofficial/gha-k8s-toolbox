@@ -25,6 +25,10 @@ Outputs:
 * `tag`: Unique artifact tag. Use this to reference the Docker image
 * `docker_tag`: Tags for the Docker image, in [docker/metadata-action syntax](https://github.com/docker/metadata-action#tags-input)
 
+| with | type | description |
+| --- | --- | --- |
+| `prefix` | `string` | Optional override of prefix. Defaults to the basename of the repository. |
+
 ### fog-ingest-activate
 
 Find toolbox pod and activate defined blue/green fog-ingest and retire the "flipside" fog-ingest (if exists).
