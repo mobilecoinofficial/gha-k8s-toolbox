@@ -109,8 +109,8 @@ toolbox_cmd()
 if [ -n "${INPUT_ACTION}" ]
 then
     case "${INPUT_ACTION}" in
-	generate-metadata)
-		./util/metadata.sh
+        generate-metadata)
+            /util/metadata.sh
             ;;
 
         fog-ingest-activate)
