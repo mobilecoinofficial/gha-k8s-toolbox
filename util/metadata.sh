@@ -19,8 +19,12 @@ is_set()
 
 normalize_ref_name()
 {
-    # Remove prefix, convert delimiters to dashes, and strip trailing dashes.
-    echo "${1}" | sed -Ee 's!^(feature|release)/!!' | sed -e 's![._/]!-!g' | sed -e 's!-*$!!'
+    # Remove prefix, convert delimiters to dashes, lowercase, and strip trailing dashes.
+    echo "${1}" | \
+        sed -Ee 's!^(feature|release)/!!' | \
+        sed -e 's![._/]!-!g' | \
+        tr '[:upper:]' '[:lower:]' | \
+        sed -e 's!-*$!!'
 }
 
 base_prefix()
@@ -96,9 +100,6 @@ EOF
     # Branches and pull requests will set type as branch.
     # Don't filter on "valid" branches, rely on workflows to filter out their accepted events.
     branch)
-        # All branch builds will just have a "dummy" tag.
-        version="v0"
-
         echo "Clean up branch. Remove feature|release prefix and replace ._/ with -"
         normalized_branch="$(normalize_ref_name "${branch}")"
 
@@ -122,8 +123,9 @@ EOF
         echo "Before: '${branch}'"
         echo "After: '${normalized_branch}'"
 
-        # Set artifact tag
-        tag="${version}-${normalized_branch}.${GITHUB_RUN_NUMBER}.${sha}"
+        # Set version and artifact tags
+	version="v0-${normalized_branch}"
+        tag="${version}.${GITHUB_RUN_NUMBER}.${sha}"
         # Set docker metadata action compatible tag
         docker_tag="type=raw,value=${tag}"
         # Set namespace from normalized branch value
