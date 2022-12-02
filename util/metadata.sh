@@ -100,6 +100,9 @@ EOF
     # Branches and pull requests will set type as branch.
     # Don't filter on "valid" branches, rely on workflows to filter out their accepted events.
     branch)
+        # All branch builds will just have a "dummy" tag.
+        version="v0"
+
         echo "Clean up branch. Remove feature|release prefix and replace ._/ with -"
         normalized_branch="$(normalize_ref_name "${branch}")"
 
@@ -124,8 +127,7 @@ EOF
         echo "After: '${normalized_branch}'"
 
         # Set version and artifact tags
-	version="v0-${normalized_branch}"
-        tag="${version}.${GITHUB_RUN_NUMBER}.${sha}"
+        tag="${version}-${normalized_branch}.${GITHUB_RUN_NUMBER}.${sha}"
         # Set docker metadata action compatible tag
         docker_tag="type=raw,value=${tag}"
         # Set namespace from normalized branch value
@@ -138,8 +140,9 @@ EOF
 esac
 
 # Set GHA output vars
+# Make version output as tag.  Maybe remove from output later to reduce confusion.
 cat <<EOO >> "${GITHUB_OUTPUT}"
-version=${version}
+version=${tag}
 namespace=${namespace}
 sha=${sha}
 tag=${tag}
