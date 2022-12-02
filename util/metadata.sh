@@ -9,12 +9,12 @@ export TMPDIR=".tmp"
 
 is_set()
 {
-  var_name="${1}"
+    var_name="${1}"
 
-  if [[ -z "${!var_name}" ]]; then
-    echo "${var_name} is not set." >&2
-    exit 1
-  fi
+    if [[ -z "${!var_name}" ]]; then
+        echo "${var_name} is not set." >&2
+        exit 1
+    fi
 }
 
 normalize_ref_name()
