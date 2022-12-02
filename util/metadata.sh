@@ -9,18 +9,22 @@ export TMPDIR=".tmp"
 
 is_set()
 {
-  var_name="${1}"
+    var_name="${1}"
 
-  if [[ -z "${!var_name}" ]]; then
-    echo "${var_name} is not set." >&2
-    exit 1
-  fi
+    if [[ -z "${!var_name}" ]]; then
+        echo "${var_name} is not set." >&2
+        exit 1
+    fi
 }
 
 normalize_ref_name()
 {
-    # Remove prefix, convert delimiters to dashes, and strip trailing dashes.
-    echo "${1}" | sed -Ee 's!^(feature|release)/!!' | sed -e 's![._/]!-!g' | sed -e 's!-*$!!'
+    # Remove prefix, convert delimiters to dashes, lowercase, and strip trailing dashes.
+    echo "${1}" | \
+        sed -Ee 's!^(feature|release)/!!' | \
+        sed -e 's![._/]!-!g' | \
+        tr '[:upper:]' '[:lower:]' | \
+        sed -e 's!-*$!!'
 }
 
 base_prefix()
@@ -122,7 +126,7 @@ EOF
         echo "Before: '${branch}'"
         echo "After: '${normalized_branch}'"
 
-        # Set artifact tag
+        # Set version and artifact tags
         tag="${version}-${normalized_branch}.${GITHUB_RUN_NUMBER}.${sha}"
         # Set docker metadata action compatible tag
         docker_tag="type=raw,value=${tag}"
@@ -136,8 +140,9 @@ EOF
 esac
 
 # Set GHA output vars
+# Make version output as tag.  Maybe remove from output later to reduce confusion.
 cat <<EOO >> "${GITHUB_OUTPUT}"
-version=${version}
+version=${tag}
 namespace=${namespace}
 sha=${sha}
 tag=${tag}
