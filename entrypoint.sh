@@ -315,8 +315,8 @@ then
             k get ns "${INPUT_NAMESPACE}" || echo_exit "Namespace doesn't exist"
 
             echo "-- Get release list"
-            release=$(helm list -a -q -n "${INPUT_NAMESPACE}" | grep "${INPUT_RELEASE_NAME}" || true)
-            if [ -n "${release}" ]
+            release=$(helm list -a -q -n "${INPUT_NAMESPACE}" | grep "${INPUT_RELEASE_NAME}" || echo "missing")
+            if [ "${release}" = "missing" ]
             then
                 echo "-- Deleting release ${INPUT_RELEASE_NAME}"
                 helm delete "${INPUT_RELEASE_NAME}" -n "${INPUT_NAMESPACE}" --wait --timeout="${INPUT_CHART_WAIT_TIMEOUT}"
