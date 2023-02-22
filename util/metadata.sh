@@ -118,10 +118,10 @@ EOF
 
         if [[ ${#normalized_branch} -gt ${cutoff} ]]
         then
-            cut_branch=$(echo "${normalized_branch}" | cut -c -${cutoff})
-            echo "Your branch name ${normalized_branch} + metadata exceeds the maximum length for K8s identifiers, truncating to ${cut_branch}"
             # cut branch should not end in - trim any dashes from the end.
-            normalized_branch="${cut_branch%%*(-)}"
+            cut_branch=$(echo "${normalized_branch}" | cut -c -${cutoff} | sed -e 's!-*$!!')
+            echo "Your branch name ${normalized_branch} + metadata exceeds the maximum length for K8s identifiers, truncating to ${cut_branch}"
+            normalized_branch="${cut_branch}"
         fi
 
         echo "Before: '${branch}'"
