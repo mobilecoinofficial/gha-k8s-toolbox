@@ -140,8 +140,6 @@ EOF
     ;;
 esac
 
-# namespace cannot end in a - or .
-
 # Set GHA output vars
 # Make version output as tag.  Maybe remove from output later to reduce confusion.
 cat <<EOO >> "${GITHUB_OUTPUT}"
