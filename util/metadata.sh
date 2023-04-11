@@ -41,13 +41,12 @@ is_set GITHUB_OUTPUT
 
 # OK if INPUT_PREFIX and GITHUB_REPOSITORY are unset.
 namespace_prefix="$(normalize_ref_name ${INPUT_PREFIX:-$(base_prefix)})"
-namespace_prefix="${namespace_prefix:-mc}"
-# Make sure prefix is no longer than 10 chars, to leave room
-# in the 63-char limit on k8s namespaces.
-if [[ ${#namespace_prefix} -gt 10 ]]
-then
-    namespace_prefix="${namespace_prefix:0:10}"
-fi
+# # Make sure prefix is no longer than 10 chars, to leave room
+# # in the 63-char limit on k8s namespaces.
+# if [[ ${#namespace_prefix} -gt 10 ]]
+# then
+#     namespace_prefix="${namespace_prefix:0:10}"
+# fi
 
 sha="sha-${GITHUB_SHA:0:8}"
 
@@ -131,8 +130,8 @@ EOF
         tag="${version}-${normalized_branch}.${GITHUB_RUN_NUMBER}.${sha}"
         # Set docker metadata action compatible tag
         docker_tag="type=raw,value=${tag}"
-        # Set namespace from normalized branch value
-        namespace="${namespace_prefix}-${normalized_branch}"
+        # Set namespace from prefix and normalized branch value. Cut down to 63
+        namespace=$(echo -n "${namespace_prefix}-${normalized_branch}" |  cut -c -63 | sed -e 's!-*$!!')
     ;;
     *)
         echo "${GITHUB_REF_TYPE} is an unknown GitHub Reference Type"
