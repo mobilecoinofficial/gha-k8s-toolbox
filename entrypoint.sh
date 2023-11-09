@@ -411,7 +411,6 @@ then
             echo "-- Query Rancher for cluster info"
             cluster=$(curl --retry 5 -sSLf -H "${auth_header}" "${INPUT_RANCHER_URL}/v3/clusters/?name=${INPUT_RANCHER_CLUSTER}")
 
-            namespaces_url=$(echo "${cluster}" | jq -r .data[0].links.namespaces)
             projects_url=$(echo "${cluster}" | jq -r .data[0].links.projects)
 
             # Get Default project id
@@ -420,12 +419,9 @@ then
             default_project_id=$(echo "${default_project}" | jq -r .data[0].id)
 
             # Add namespace to Default project
-            echo "-- Add ${INPUT_NAMESPACE} to Default project ${default_project_id}"
-            curl --retry 5 -sSLf -H "${auth_header}" \
-                -H 'Accept: application/json' \
-                -H 'Content-Type: application/json' \
-                -X POST "${namespaces_url}/${INPUT_NAMESPACE}?action=move" \
-                -d "{\"projectId\":\"${default_project_id}\"}"
+            echo "-- Annotate ${INPUT_NAMESPACE} to Default project ${default_project_id}"
+
+            k annotate ns ${INPUT_NAMESPACE} field.cattle.io/projectId="${default_project_id}"
             ;;
 
         pod-restart)
