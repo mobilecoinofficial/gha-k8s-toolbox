@@ -314,6 +314,7 @@ then
             for c in ${chart_files}
             do
                 chart=$(dirname "${c}")
+                echo "-- Linting ${chart}"
                 helm lint --quiet "${chart}" 2>&1
             done
             ;;

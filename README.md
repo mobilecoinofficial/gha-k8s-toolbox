@@ -89,6 +89,17 @@ Deploy helm chart in target namespace/cluster
 | `rancher_url` | `string` | Rancher Server URL |
 | `rancher_token` | `string` | Rancher API Token |
 
+### helm-lint
+
+Lint all the helm charts in the current workspace.
+
+```yaml
+    - name: Lint Helm Charts
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1.0
+      with:
+        action: helm-lint
+```
+
 ### helm-release-delete
 
 Delete a helm release in the target namespace/cluster.
