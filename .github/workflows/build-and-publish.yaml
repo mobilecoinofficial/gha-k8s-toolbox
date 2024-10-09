@@ -12,7 +12,7 @@ env:
 
 jobs:
   docker:
-    runs-on: [self-hosted, Linux, small]
+    runs-on: mco-dev-small-x64
     steps:
     - name: Checkout
       uses: actions/checkout@v3
