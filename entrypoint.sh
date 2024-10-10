@@ -306,6 +306,19 @@ then
             fi
             ;;
 
+        helm-lint)
+            # Lint all the helm charts in the repo
+            chart_files=$(find . -name Chart.yaml -type f)
+
+            # helm lint on directories where there are chart.yaml files
+            for c in ${chart_files}
+            do
+                chart=$(dirname "${c}")
+                echo "-- Linting ${chart}"
+                helm lint --quiet "${chart}" 2>&1
+            done
+            ;;
+
         helm-release-delete)
             # Delete a helm release
             rancher_get_kubeconfig
