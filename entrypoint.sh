@@ -416,7 +416,7 @@ then
 
             echo "-- Push OCI chart"
             chart_name=$(basename "${INPUT_CHART_PATH}")
-            helm push --force ".tmp/charts/${chart_name}-${INPUT_CHART_VERSION}.tgz" oci://"${INPUT_CHART_REPO}"
+            helm push ".tmp/charts/${chart_name}-${INPUT_CHART_VERSION}.tgz" oci://"${INPUT_CHART_REPO}"
             ;;
 
         namespace-delete)
