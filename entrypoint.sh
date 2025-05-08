@@ -74,6 +74,43 @@ helm_upgrade()
     error_exit "Helm Deployment Failed"
 }
 
+helm_package()
+{
+    is_set INPUT_CHART_APP_VERSION
+    is_set INPUT_CHART_PATH
+    is_set INPUT_CHART_VERSION
+
+    if [ "${INPUT_CHART_SIGN}" == "true" ]
+    then
+        is_set INPUT_CHART_PGP_KEYRING_PATH
+        is_set INPUT_CHART_PGP_KEY_NAME
+    fi
+
+    echo "-- Create chart tmp dir - .tmp/charts"
+    mkdir -p ".tmp/charts"
+
+    echo "-- Updating chart dependencies"
+    helm dependency update "${INPUT_CHART_PATH}"
+
+    if [ "${INPUT_CHART_SIGN}" == "true" ]
+    then
+        echo "-- Package and sign chart with provided pgp key"
+        helm package "${INPUT_CHART_PATH}" \
+            -d ".tmp/charts" \
+            --app-version="${CHART_APP_VERSION}" \
+            --version="${INPUT_CHART_VERSION}" \
+            --sign \
+            --keyring="${INPUT_CHART_PGP_KEYRING_PATH}" \
+            --key="${INPUT_CHART_PGP_KEY}"
+    else
+        echo "-- Package unsigned chart"
+        helm package "${INPUT_CHART_PATH}" \
+            -d ".tmp/charts" \
+            --app-version="${INPUT_CHART_APP_VERSION}" \
+            --version="${INPUT_CHART_VERSION}"
+    fi
+}
+
 helm_upgrade_with_values()
 {
     repo_name="${1}"
@@ -352,35 +389,7 @@ then
             is_set INPUT_CHART_REPO_PASSWORD
             is_set INPUT_CHART_REPO_USERNAME
 
-            if [ "${INPUT_CHART_SIGN}" == "true" ]
-            then
-                is_set INPUT_CHART_PGP_KEYRING_PATH
-                is_set INPUT_CHART_PGP_KEY_NAME
-            fi
-
-            echo "-- Create chart tmp dir - .tmp/charts"
-            mkdir -p ".tmp/charts"
-
-            echo "-- Updating chart dependencies"
-            helm dependency update "${INPUT_CHART_PATH}"
-
-            if [ "${INPUT_CHART_SIGN}" == "true" ]
-            then
-                echo "-- Package and sign chart with provided pgp key"
-                helm package "${INPUT_CHART_PATH}" \
-                    -d ".tmp/charts" \
-                    --app-version="${CHART_APP_VERSION}" \
-                    --version="${INPUT_CHART_VERSION}" \
-                    --sign \
-                    --keyring="${INPUT_CHART_PGP_KEYRING_PATH}" \
-                    --key="${INPUT_CHART_PGP_KEY}"
-            else
-                echo "-- Package unsigned chart"
-                helm package "${INPUT_CHART_PATH}" \
-                    -d ".tmp/charts" \
-                    --app-version="${INPUT_CHART_APP_VERSION}" \
-                    --version="${INPUT_CHART_VERSION}"
-            fi
+            helm_package
 
             echo "-- Add chart repo ${INPUT_CHART_REPO}"
             helm repo add repo "${INPUT_CHART_REPO}" \
@@ -390,6 +399,29 @@ then
             echo "-- Push chart"
             chart_name=$(basename "${INPUT_CHART_PATH}")
             helm cm-push --force ".tmp/charts/${chart_name}-${INPUT_CHART_VERSION}.tgz" repo
+            ;;
+
+        helm-publish-oci)
+            is_set INPUT_CHART_APP_VERSION
+            is_set INPUT_CHART_PATH
+            is_set INPUT_CHART_VERSION
+            is_set INPUT_CHART_REPO
+            is_set INPUT_CHART_REPO_PASSWORD
+            is_set INPUT_CHART_REPO_USERNAME
+
+            if [[ "${INPUT_CHART_REPO}" != oci* ]]
+            then
+                error_exit "INPUT_CHART_REPO must be an OCI Repository"
+            fi
+
+            helm_package
+
+            echo "-- Login OCI registry ${INPUT_CHART_REPO}, as ${INPUT_CHART_REPO_USERNAME}"
+            echo "${INPUT_CHART_REPO_PASSWORD}" | helm registry login ${INPUT_CHART_REPO} --username ${INPUT_CHART_REPO_USERNAME} --password-stdin
+
+            echo "-- Push OCI chart"
+            chart_name=$(basename "${INPUT_CHART_PATH}")
+            helm push --force ".tmp/charts/${chart_name}-${INPUT_CHART_VERSION}.tgz" "${INPUT_CHART_REPO}"
             ;;
 
         namespace-delete)
