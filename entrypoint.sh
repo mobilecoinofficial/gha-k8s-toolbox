@@ -412,11 +412,11 @@ then
             helm_package
 
             echo "-- Login OCI registry ${INPUT_CHART_REPO}, as ${INPUT_CHART_REPO_USERNAME}"
-            echo "${INPUT_CHART_REPO_PASSWORD}" | helm registry login ${INPUT_CHART_REPO} --username ${INPUT_CHART_REPO_USERNAME} --password-stdin
+            echo "${INPUT_CHART_REPO_PASSWORD}" | helm registry login "${INPUT_CHART_REPO}" --username "${INPUT_CHART_REPO_USERNAME}" --password-stdin
 
             echo "-- Push OCI chart"
             chart_name=$(basename "${INPUT_CHART_PATH}")
-            helm push ".tmp/charts/${chart_name}-${INPUT_CHART_VERSION}.tgz" oci://"${INPUT_CHART_REPO}"
+            helm push ".tmp/charts/${chart_name}-${INPUT_CHART_VERSION}.tgz" "oci://${INPUT_CHART_REPO}"
             ;;
 
         namespace-delete)
