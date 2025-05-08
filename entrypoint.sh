@@ -409,11 +409,6 @@ then
             is_set INPUT_CHART_REPO_PASSWORD
             is_set INPUT_CHART_REPO_USERNAME
 
-            if [[ "${INPUT_CHART_REPO}" != oci* ]]
-            then
-                error_exit "INPUT_CHART_REPO must be an OCI Repository"
-            fi
-
             helm_package
 
             echo "-- Login OCI registry ${INPUT_CHART_REPO}, as ${INPUT_CHART_REPO_USERNAME}"
@@ -421,7 +416,7 @@ then
 
             echo "-- Push OCI chart"
             chart_name=$(basename "${INPUT_CHART_PATH}")
-            helm push --force ".tmp/charts/${chart_name}-${INPUT_CHART_VERSION}.tgz" "${INPUT_CHART_REPO}"
+            helm push --force ".tmp/charts/${chart_name}-${INPUT_CHART_VERSION}.tgz" oci://"${INPUT_CHART_REPO}"
             ;;
 
         namespace-delete)
