@@ -151,6 +151,32 @@ Publish a helm chart to a harbor repo.
 | `chart_version` | `string` | Chart version |
 | `chart_path` | `string` | Path to chart files in the repo |
 
+### helm-publish-oci
+
+Publish a helm chart to an OCI-enabled registry/repo
+
+```yaml
+    - name: Publish chart (OCI)
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: helm-publish-oci
+        chart_repo_username: ${{ github.actor }}
+        chart_repo_password: ${{ github.token }}
+        chart_repo: ghcr.io/organization
+        chart_app_version: ${{ needs.generate-metadata.outputs.tag }}
+        chart_version: ${{ needs.generate-metadata.outputs.tag }}
+        chart_path: .internal-ci/helm/${{ matrix.chart }}
+```
+
+| with | type | description |
+| --- | --- | --- |
+| `chart_repo_username` | `string` | Username. With ghcr.io and actions, `${{ github.actor }}` suffices |
+| `chart_repo_password` | `string` | With ghcr.io and actions, `${{ github.token }}` should be used to tie the Chart (Package) to the repo |
+| `chart_repo` | `string` | For ghcr.io: Use `ghcr.io/<organization>` |
+| `chart_app_version` | `string` | App version |
+| `chart_version` | `string` | Chart version |
+| `chart_path` | `string` | Path to chart files in the repo |
+
 ### namespace-delete
 
 Delete a namespace in the target Rancher/K8s cluster.
