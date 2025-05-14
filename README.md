@@ -89,6 +89,44 @@ Deploy helm chart in target namespace/cluster
 | `rancher_url` | `string` | Rancher Server URL |
 | `rancher_token` | `string` | Rancher API Token |
 
+### helm-deploy-oci
+
+Deploy helm chart in target namespace/cluster from an OCI registry
+
+```yaml
+    - name: Deploy environment setup
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1.0
+      with:
+        action: helm-deploy
+        chart_repo: ghcr.io/<organization-name>
+        chart_name: mc-stage-twix-test-client
+        chart_version: 0.0.0-dev
+        chart_values: .tmp/values/mc-stage-twix-test-client-values.yaml
+        chart_set: |
+          --set image.org=${{ inputs.docker_image_org }}
+        release_name: mc-stage-twix-test-client
+        namespace: my-namespace
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.RANCHER_URL }}
+        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+```
+
+| with | type | description |
+| --- | --- | --- |
+| `chart_repo` | `string` | Public OCI Chart registry |
+| `chart_name` | `string` | Name of chart in repo |
+| `chart_repo_username` | `string` | Username for OCI chart registry (github.actor for ghcr.io) |
+| `chart_repo_password` | `string` | Password for OCI chart registry (github.token for ghcr.io) |
+| `chart_set` | `\n delimitated list` | (optional) list of `--set` options for helm |
+| `chart_timeout` | `duration` | (optional - default `10m`) Duration to wait for resources to become healthy |
+| `chart_values` | `string` | (optional) Path to values.yaml file |
+| `chart_version` | `string` | version of chart |
+| `namespace` | `string` | Namespace in target cluster |
+| `release_name` | `string` | Helm release name |
+| `rancher_cluster` | `string` | Target cluster name |
+| `rancher_url` | `string` | Rancher Server URL |
+| `rancher_token` | `string` | Rancher API Token |
+
 ### helm-lint
 
 Lint all the helm charts in the current workspace.
