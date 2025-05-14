@@ -343,6 +343,34 @@ then
             fi
             ;;
 
+        helm-deploy-oci)
+            # Deploy a helm chart
+            rancher_get_kubeconfig
+            is_set INPUT_NAMESPACE
+            is_set INPUT_RELEASE_NAME
+            is_set INPUT_CHART_VERSION
+            is_set INPUT_CHART_REPO
+            is_set INPUT_CHART_NAME
+            is_set INPUT_CHART_WAIT_TIMEOUT
+
+            # log into chart repo with creds if provided.
+            if [[ -n "${INPUT_CHART_REPO_USERNAME}" ]] && [[ -n "${INPUT_CHART_REPO_PASSWORD}" ]]
+            then
+                echo "-- Login OCI registry ${INPUT_CHART_REPO}, as ${INPUT_CHART_REPO_USERNAME}"
+                echo "${INPUT_CHART_REPO_PASSWORD}" | helm registry login "${INPUT_CHART_REPO}" \
+                    --username "${INPUT_CHART_REPO_USERNAME}" --password-stdin
+            fi
+
+            set_options=$(echo -n "${INPUT_CHART_SET}" | tr '\n' ' ')
+
+            if [ -n "${INPUT_CHART_VALUES}" ]
+            then
+                helm_upgrade_with_values "oci://${INPUT_CHART_REPO}" "${set_options}"
+            else
+                helm_upgrade "oci://${INPUT_CHART_REPO}" "${set_options}"
+            fi
+            ;;
+
         helm-lint)
             # Lint all the helm charts in the repo
             chart_files=$(find . -name Chart.yaml -type f)
