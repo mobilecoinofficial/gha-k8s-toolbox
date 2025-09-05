@@ -15,13 +15,13 @@ jobs:
     steps:
     # We need to use an external PAT here because GHA will not run downstream events if we use the built in token.
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: mobilecoinofficial/gh-actions/checkout@v0
       with:
         token: ${{ secrets.ACTIONS_TOKEN }}
 
     - name: Bump GitHub tag
       id: bump
-      uses: anothrNick/github-tag-action@1.36.0
+      uses: anothrNick/github-tag-action@4ed44965e0db8dab2b466a16da04aec3cc312fd8 # 1.75.0
       env:
         GITHUB_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
         WITH_V: 'true'
