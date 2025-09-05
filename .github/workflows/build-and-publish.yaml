@@ -31,3 +31,4 @@ jobs:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
         push: ${{ github.event_name == 'pull_request' && 'false' || 'true' }}
+        dockerfile: Dockerfile
