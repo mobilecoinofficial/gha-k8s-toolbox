@@ -46,6 +46,8 @@ rancher_get_kubeconfig()
     auth_header="Authorization: Bearer ${INPUT_RANCHER_TOKEN}"
     kubeconfig_url=$(curl --retry 5 -sSLf -H "${auth_header}" "${INPUT_RANCHER_URL}/v3/clusters/?name=${INPUT_RANCHER_CLUSTER}" | jq -r .data[0].actions.generateKubeconfig)
 
+    sleep 5
+
     echo "-- Write kubeconfig"
     curl --retry 5 -sSLf -H "${auth_header}" -X POST "${kubeconfig_url}" | jq -r .config > "${KUBECONFIG}"
     chmod 600 "${KUBECONFIG}"
