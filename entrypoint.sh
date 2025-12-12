@@ -491,7 +491,8 @@ then
             # Add namespace to Default project
             echo "-- Annotate ${INPUT_NAMESPACE} to Default project ${default_project_id}"
 
-            k annotate ns ${INPUT_NAMESPACE} field.cattle.io/projectId="${default_project_id}"
+            k annotate ns "${INPUT_NAMESPACE}" field.cattle.io/projectId="${default_project_id}"
+            k label ns "${INPUT_NAMESPACE}" --overwrite istio.io/dataplane-mode=ambient
             ;;
 
         pod-restart)
