@@ -5,9 +5,6 @@ on:
   push:
     branches:
     - main
-  # Refresh images on the first of every month for OS security updates.
-  schedule:
-  - cron: '0 0 1 * *'
 
 jobs:
   tag:
@@ -21,14 +18,13 @@ jobs:
 
     - name: Bump GitHub tag
       id: bump
-      uses: anothrNick/github-tag-action@4ed44965e0db8dab2b466a16da04aec3cc312fd8 # 1.75.0
-      env:
-        GITHUB_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
-        WITH_V: 'true'
-        DEFAULT_BUMP: patch
-        DRY_RUN: 'true'
+      uses: mobilecoinofficial/gh-actions/tag@v0
+      with:
+        github_token: ${{ secrets.ACTIONS_TOKEN }}
+        with_v: 'true'
+        default_bump: patch
 
-    # Doing manual tags because anothrNick/github-tag-action won't retag a commit.
+    # Push major and minor tags because anothrNick/github-tag-action won't retag a commit.
     - name: Get major and minor values for new tag
       id: tags
       env:
@@ -38,5 +34,4 @@ jobs:
         export MAJOR=${MAJOR_MINOR%.*}
         git tag --force "${MAJOR}"
         git tag --force "${MAJOR_MINOR}"
-        git tag --force "${TAG}"
         git push --tags --force
