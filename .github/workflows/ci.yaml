@@ -1,0 +1,45 @@
+# Copyright (c) 2022 MobileCoin Inc.
+name: ci
+
+on:
+  pull_request: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  lint-shell:
+    runs-on: mco-dev-small-x64
+    steps:
+    - name: Run shellcheck with reviewdog
+      uses: mobilecoinofficial/gh-actions/lint-shell@v0
+
+  lint-actions:
+    runs-on: mco-dev-small-x64
+    steps:
+    - name: Run actionlint with reviewdog
+      uses: mobilecoinofficial/gh-actions/lint-actions@v0
+
+  lint-docker:
+    runs-on: mco-dev-small-x64
+    steps:
+    - name: Run hadolint with reviewdog
+      uses: mobilecoinofficial/gh-actions/lint-docker@v0
+
+  # Have one noop job at the end that passes if all the other checks pass.
+  # This is so we can just have one "standard" check to add to the branch protections.
+  workflow-ok:
+    needs:
+    - lint-shell
+    - lint-actions
+    - lint-docker
+    runs-on: mco-dev-small-x64
+    steps:
+    - name: All Checks OK!
+      run: |
+        true
