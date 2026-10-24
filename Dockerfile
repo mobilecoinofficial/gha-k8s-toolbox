@@ -1,5 +1,5 @@
 # Copyright (c) 2022 MobileCoin Inc.
-FROM alpine:3.24.2
+FROM alpine:3.24.3
 
 ENV HELM_CONFIG_HOME=/opt/helm
 ENV HELM_REGISTRY_CONFIG=/opt/helm/registry.json
